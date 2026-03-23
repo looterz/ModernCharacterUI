@@ -2,8 +2,6 @@
 
 A High-resolution UI for the character panel, dressing room, and inspect window with Midnight-style design and several quality of life features.
 
-## Features
-
 ### Character Panel
 - 3x larger window with full-size 3D character model, drag rotation, scroll zoom, and Z to sheathe weapons
 - Per-slot item level, quality-colored borders, gem/socket indicators, cooldown overlays
