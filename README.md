@@ -1,6 +1,6 @@
 # Modern Character UI
 
-A high-resolution replacement for WoW's character panel, dressing room, and inspect window. Designed for WoW Midnight.
+A High-resolution UI for the character panel, dressing room, and inspect window with Midnight-style design and several quality of life features.
 
 ## Features
 
