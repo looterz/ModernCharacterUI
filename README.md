@@ -35,7 +35,8 @@ A high-resolution replacement for WoW's character panel, dressing room, and insp
 
 ## Installation
 
-Place the `ModernCharacterUI` folder in your `Interface\AddOns` directory.
+1. Download from [CurseForge](https://www.curseforge.com/wow/addons/modern-character-ui) or [GitHub](https://github.com/looterz/ModernCharacterUI).
+2. Place the `ModernCharacterUI` folder in your `Interface\AddOns` directory.
 
 ## Configuration
 
@@ -60,6 +61,14 @@ Place the `ModernCharacterUI` folder in your `Interface\AddOns` directory.
 | `/mcu config` | Open settings |
 | `ESC` | Close topmost panel |
 
+## Feedback and Support
+
+Found a bug or have a suggestion? Visit the [issue tracker](https://github.com/looterz/ModernCharacterUI/issues) on GitHub.
+
+## Contribution
+
+Pull requests are welcome on the [GitHub repository](https://github.com/looterz/ModernCharacterUI).
+
 ## License
 
-Released under the MIT License.
+Released under the [MIT License](https://github.com/looterz/ModernCharacterUI/blob/main/LICENSE).
