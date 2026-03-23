@@ -256,8 +256,13 @@ container:SetScript("OnSizeChanged", function(self)
     content:SetWidth(w > 0 and w or 880)
 end)
 
+local entries = {}
+local selectedIndex = nil
+
 local popup = CreateFrame("Frame", nil, container, "BackdropTemplate")
-popup:SetWidth(200)
+popup:SetWidth(260)
+popup:SetPoint("TOPRIGHT", container, "TOPRIGHT", -4, -30)
+popup:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -4, 8)
 popup:SetBackdrop({
     bgFile   = "Interface\\Buttons\\WHITE8x8",
     edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -269,11 +274,28 @@ popup:SetBackdropBorderColor(0.35, 0.35, 0.35, 0.9)
 popup:SetFrameLevel(container:GetFrameLevel() + 20)
 popup:Hide()
 
+local popupClose = CreateFrame("Button", nil, popup, "UIPanelCloseButton")
+popupClose:SetPoint("TOPRIGHT", -2, -2)
+popupClose:SetScript("OnClick", function()
+    selectedIndex = nil
+    popup:Hide()
+    ns:UpdateCurrency()
+end)
+
+local popupTitle = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+popupTitle:SetPoint("TOPLEFT", 14, -14)
+popupTitle:SetPoint("TOPRIGHT", popupClose, "TOPLEFT", -4, 0)
+popupTitle:SetJustifyH("LEFT")
+popupTitle:SetTextColor(1, 0.82, 0, 1)
+
 local backpackCheck = CreateFrame("CheckButton", nil, popup, "UICheckButtonTemplate")
 backpackCheck:SetSize(22, 22)
-backpackCheck:SetPoint("TOPLEFT", 10, -10)
+backpackCheck:SetPoint("TOPLEFT", popupTitle, "BOTTOMLEFT", -4, -8)
 backpackCheck.text:SetFontObject("GameFontHighlightSmall")
 backpackCheck.text:SetText(SHOW_ON_BACKPACK or "Show on Backpack")
+backpackCheck.text:SetPoint("RIGHT", popup, "RIGHT", -14, 0)
+backpackCheck.text:SetJustifyH("LEFT")
+backpackCheck.text:SetJustifyV("TOP")
 
 backpackCheck:SetScript("OnClick", function(self)
     if not popup.currencyIndex then return end
@@ -288,7 +310,10 @@ local unusedCheck = CreateFrame("CheckButton", nil, popup, "UICheckButtonTemplat
 unusedCheck:SetSize(22, 22)
 unusedCheck:SetPoint("TOPLEFT", backpackCheck, "BOTTOMLEFT", 0, -2)
 unusedCheck.text:SetFontObject("GameFontHighlightSmall")
-unusedCheck.text:SetText(TOKEN_MOVE_TO_UNUSED or "Mark as Unused")
+unusedCheck.text:SetText("Move to Unused")
+unusedCheck.text:SetPoint("RIGHT", popup, "RIGHT", -14, 0)
+unusedCheck.text:SetJustifyH("LEFT")
+unusedCheck.text:SetJustifyV("TOP")
 
 unusedCheck:SetScript("OnClick", function(self)
     if not popup.currencyIndex then return end
@@ -297,15 +322,6 @@ unusedCheck:SetScript("OnClick", function(self)
               or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
     ns:UpdateCurrency()
 end)
-
-local function ResizePopup()
-    local h = 10 + 24 + 4 + 24 + 10  -- padding + 2 checkboxes
-    popup:SetHeight(h)
-end
-ResizePopup()
-
-local entries = {}
-local selectedIndex = nil
 
 local function CreateEntry()
     local entry = CreateFrame("Button", nil, content)
@@ -399,11 +415,10 @@ local function CreateEntry()
             selectedIndex = self.currencyIndex
             local info = C_CurrencyInfo.GetCurrencyListInfo(self.currencyIndex)
             if info then
+                popupTitle:SetText(info.name or "")
                 backpackCheck:SetChecked(info.isShowInBackpack)
                 unusedCheck:SetChecked(info.isTypeUnused)
                 popup.currencyIndex = self.currencyIndex
-                popup:ClearAllPoints()
-                popup:SetPoint("TOPLEFT", self, "TOPRIGHT", 4, 4)
                 popup:Show()
             end
         end
