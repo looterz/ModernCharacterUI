@@ -12,6 +12,12 @@ A High-resolution UI for the character panel, dressing room, and inspect window 
 - Reputation tab with search, filters, color-coded standing bars, and detail panel
 - Currency tab with search, filters, backpack tracking (Shift+click), and transfer log
 
+![Character Panel](https://media.forgecdn.net/attachments/1595/671/wowscrnshot_032326_135511-jpg.jpg)
+
+![Reputation Tab](https://media.forgecdn.net/attachments/1595/670/wowscrnshot_032326_135516-jpg.jpg)
+
+![Currency Tab](https://media.forgecdn.net/attachments/1595/669/wowscrnshot_032326_135519-jpg.jpg)
+
 ### Dressing Room
 - Full Transmog-style 3-panel layout with outfit list, character preview, and built-in appearances browser
 - 5x6 model grid with search, source filters, and paging
@@ -21,6 +27,8 @@ A High-resolution UI for the character panel, dressing room, and inspect window 
 - Save and load custom outfit sets
 - View in Dressing Room button on the inspect window previews the full outfit
 
+![Dressing Room](https://media.forgecdn.net/attachments/1595/667/wowscrnshot_032326_135559-jpg.jpg)
+
 ### Inspect Window
 - Same design as the character panel with 3D model and 18 equipment slots
 - Item level, specialization, and class-colored name display
@@ -28,6 +36,8 @@ A High-resolution UI for the character panel, dressing room, and inspect window 
 - View in Dressing Room and View Talents buttons
 - PvP tab shows honor level, arena ratings, solo shuffle, RBG, and blitz ratings
 - Guild tab shows tabard, name, faction, rank, and member count
+
+![Inspect Window](https://media.forgecdn.net/attachments/1595/666/wowscrnshot_032326_135611-jpg.jpg)
 
 ### Quality of Life
 - Combat lockout option to prevent panels from opening mid-fight
