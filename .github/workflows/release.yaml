@@ -73,6 +73,6 @@ jobs:
         changelog_type: text
         display_name: ModernCharacterUI ${{ steps.get_version.outputs.VERSION }}
         game_endpoint: wow
-        game_versions: "13433,13771,14026,13924,14422"
+        game_versions: "14422,15855"
         relations: "ace3:embeddedLibrary"
         token: ${{ secrets.CURSEFORGE_API_TOKEN }}

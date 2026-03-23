@@ -1,6 +1,6 @@
-## Interface: 120001
+## Interface: 120005, 120001
 ## Title: Modern Character UI
-## Notes: High-resolution replacements for the character panel, dressing room, and inspect window with Transmog-style visuals
+## Notes: High-resolution UI for the character panel, dressing room, and inspect window with Midnight-style design
 ## Author: looterz
 ## Version: 1.0.0
 ## SavedVariables: ModernCharacterUIDB
