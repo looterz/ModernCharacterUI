@@ -38,7 +38,9 @@ A High-resolution UI for the character panel, dressing room, and inspect window 
 ![Inspect Window](https://media.forgecdn.net/attachments/1595/666/wowscrnshot_032326_135611-jpg.jpg)
 
 ### Quality of Life
-- Combat lockout option to prevent panels from opening mid-fight
+- Combat lockout option to prevent Character window from opening mid-fight
+- Preview any item in the dressing room and then click the item slot to view it in your collection
+- Search & Filter support for the Reputation and Currency tabs to quickly find what you need
 - All windows remember their position between sessions
 
 ## Installation
