@@ -1,6 +1,6 @@
 # Modern Character UI
 
-High-resolution UI for the character panel, dressing room, and inspect windows with Midnight-style design and quality of life features
+High-resolution UI for the character, dressing room, and inspect windows with Midnight-style design and quality of life features
 
 ### Character Panel
 - 3x larger window with full-size 3D character model, drag rotation, scroll zoom, and Z to sheathe weapons
