@@ -42,24 +42,15 @@ A high-resolution replacement for WoW's character panel, dressing room, and insp
 
 `/mcu config` or Interface > AddOns > Modern Character UI.
 
-| Setting | Default |
-|---------|---------|
-| Override Legacy Character Panel | On |
-| Override Legacy Dressing Room | On |
-| Override Legacy Inspect Window | On |
-| Block Opening in Combat | On |
+- **Override Legacy Character Panel**: On
+- **Override Legacy Dressing Room**: On
+- **Override Legacy Inspect Window**: On
+- **Block Opening in Combat**: On
 
-## Controls
+## Commands
 
-| Input | Action |
-|-------|--------|
-| `C` | Toggle character panel |
-| `Ctrl+click` item | Open dressing room |
-| Right-click > Inspect | Open inspect window |
-| `Z` | Toggle weapon sheathe |
-| `/mcu` | Toggle character panel |
-| `/mcu config` | Open settings |
-| `ESC` | Close topmost panel |
+- **`/mcu`**: Toggle character panel
+- **`/mcu config`**: Open settings
 
 ## Feedback and Support
 
