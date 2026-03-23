@@ -1,0 +1,78 @@
+name: Release ModernCharacterUI
+
+on:
+  push:
+    tags:
+      - '*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g., v1.0.0)'
+        required: true
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get the version
+      id: get_version
+      run: |
+        echo "VERSION=${{ github.event.inputs.tag || github.ref_name }}" >> $GITHUB_OUTPUT
+
+    - name: Generate Changelog
+      id: generate_changelog
+      run: |
+        CHANGELOG_RAW=$(git log --pretty=format:'* %s' -n 1 ${{ steps.get_version.outputs.VERSION }})
+        echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+        echo "${CHANGELOG_RAW}" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get_version.outputs.VERSION }}
+        name: ModernCharacterUI ${{ steps.get_version.outputs.VERSION }}
+        body: |
+          Changes in this Release:
+          ${{ steps.generate_changelog.outputs.CHANGELOG }}
+        draft: false
+        prerelease: false
+
+    - name: Bundle Addon
+      run: |
+        ADDON_NAME="ModernCharacterUI"
+        VERSION="${{ steps.get_version.outputs.VERSION }}"
+
+        TEMP_DIR="/tmp/$ADDON_NAME"
+        mkdir -p "$TEMP_DIR"
+        rsync -av --exclude='.git' --exclude='.github' --exclude='build' "${{ github.workspace }}/" "$TEMP_DIR/"
+
+        BUILD_DIR="${{ github.workspace }}/build"
+        mkdir -p "$BUILD_DIR"
+
+        ZIP_FILE="$BUILD_DIR/$ADDON_NAME-$VERSION.zip"
+        cd /tmp
+        zip -r "$ZIP_FILE" "./$ADDON_NAME"
+
+    - name: Upload to CurseForge
+      uses: itsmeow/curseforge-upload@3.1.1
+      with:
+        project_id: ${{ secrets.CURSEFORGE_PROJECT_ID }}
+        file_path: build/ModernCharacterUI-${{ steps.get_version.outputs.VERSION }}.zip
+        changelog: Release ${{ steps.get_version.outputs.VERSION }}
+        changelog_type: text
+        display_name: ModernCharacterUI ${{ steps.get_version.outputs.VERSION }}
+        game_endpoint: wow
+        game_versions: "13433,13771,14026,13924,14422"
+        relations: "ace3:embeddedLibrary"
+        token: ${{ secrets.CURSEFORGE_API_TOKEN }}

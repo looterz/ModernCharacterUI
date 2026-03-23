@@ -1,0 +1,28 @@
+## Interface: 120001
+## Title: Modern Character UI
+## Notes: High-resolution replacements for the character panel, dressing room, and inspect window with Transmog-style visuals
+## Author: looterz
+## Version: 1.0.0
+## SavedVariables: ModernCharacterUIDB
+## IconTexture: Interface\Icons\INV_Chest_Cloth_17
+
+# ACE3 Libraries
+embeds.xml
+
+# Core
+Core.lua
+Settings.lua
+MainFrame.lua
+ModelPanel.lua
+DressingRoomShared.lua
+DressingRoomOverrides.lua
+DressingRoomTemplates.xml
+DressingRoomWardrobe.xml
+DressingRoomFrame.xml
+DressingRoomHooks.lua
+EquipmentSlots.lua
+StatsPanel.lua
+EquipmentManager.lua
+ReputationPanel.lua
+CurrencyPanel.lua
+InspectFrame.lua

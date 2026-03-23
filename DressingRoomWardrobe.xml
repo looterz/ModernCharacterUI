@@ -1,0 +1,259 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\..\..\..\..\..\WoW\Data\Interface\AddOns\Blizzard_SharedXML\UI.xsd">
+	<Script file="DressingRoomWardrobe.lua"/>
+
+	<DressUpModel name="MCUDR_WardrobeModelTemplate" mixin="MCUDR_WardrobeModelMixin" virtual="true">
+		<Size x="78" y="104"/>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture setAllPoints="true">
+					<Color r="0" g="0" b="0"/>
+				</Texture>
+			</Layer>
+			<Layer level="OVERLAY" textureSubLevel="-1">
+				<Texture parentKey="Border" atlas="transmog-wardrobe-border-collected" useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER" x="0" y="-3"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="OVERLAY">
+				<Texture parentKey="DisabledOverlay" atlas="transmog-wardrobe-border-selected" hidden="true" hWrapMode="CLAMPTOBLACKADDITIVE" vWrapMode="CLAMPTOBLACKADDITIVE">
+					<Color a="0.8"/>
+					<Size x="96" y="124"/>
+					<Anchors>
+						<Anchor point="CENTER" x="0" y="0"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="OVERLAY">
+				<Texture parentKey="TransmogStateTexture" atlas="transmog-wardrobe-border-selected" useAtlasSize="true" alphaMode="ADD" hidden="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="SlotInvalidTexture" atlas="transmog-icon-unsupported" useAtlasSize="true" hidden="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="OVERLAY" textureSubLevel="1">
+				<FontString parentKey="NewString" inherits="GameFontHighlight" maxLines="1" justifyH="CENTER" text="NEW_CAPS" hidden="true">
+					<Shadow>
+						<Color color="NEW_FEATURE_SHADOW_COLOR"/>
+					</Shadow>
+					<Anchors>
+						<Anchor point="TOP" x="0" y="8"/>
+					</Anchors>
+				</FontString>
+				<Texture parentKey="NewGlow" atlas="collections-newglow" hidden="true">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeKey="$parent.NewString" x="-20" y="10"/>
+						<Anchor point="BOTTOMRIGHT" relativeKey="$parent.NewString" x="20" y="-10"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="HIGHLIGHT">
+				<Texture atlas="transmog-wardrobe-border-highlighted" alphaMode="ADD" useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER" x="0" y="0"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+		</Layers>
+		<Frames>
+			<Frame parentKey="Favorite" setAllPoints="true">
+				<Layers>
+					<Layer level="ARTWORK">
+						<Texture parentKey="Icon" atlas="collections-icon-favorites" useAtlasSize="true" hidden="true">
+							<Anchors>
+								<Anchor point="TOPLEFT" x="-12" y="13" relativePoint="TOPLEFT"/>
+							</Anchors>
+						</Texture>
+					</Layer>
+				</Layers>
+			</Frame>
+			<Frame parentKey="HideVisual" setAllPoints="true">
+				<Layers>
+					<Layer level="ARTWORK">
+						<Texture parentKey="Icon" atlas="transmog-icon-hidden" useAtlasSize="true" hidden="true">
+							<Anchors>
+								<Anchor point="TOPLEFT" x="-12" y="13" relativePoint="TOPLEFT"/>
+							</Anchors>
+						</Texture>
+					</Layer>
+				</Layers>
+			</Frame>
+		</Frames>
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+			<OnModelLoaded method="OnModelLoaded"/>
+			<OnMouseDown method="OnMouseDown"/>
+			<OnEnter method="OnEnter"/>
+			<OnLeave method="OnLeave"/>
+			<OnShow method="OnShow"/>
+			<OnHide method="OnHide"/>
+		</Scripts>
+	</DressUpModel>
+
+	<Frame name="MCUDR_AppearancesFrame" mixin="MCUDR_AppearancesMixin" hidden="true">
+		<Size x="590" y="500"/>
+		<Frames>
+			<EditBox parentKey="SearchBox" mixin="MCUDR_AppearancesSearchBoxMixin" inherits="SearchBoxTemplate" letters="40">
+				<Size x="115" y="20"/>
+				<Anchors>
+					<Anchor point="TOP" x="90" y="-10"/>
+				</Anchors>
+				<Scripts>
+					<OnLoad method="OnLoad"/>
+					<OnTextChanged method="OnTextChanged"/>
+				</Scripts>
+			</EditBox>
+			<DropdownButton parentKey="FilterButton" inherits="WowStyle1FilterDropdownTemplate">
+				<KeyValues>
+					<KeyValue key="resizeToText" type="boolean" value="false"/>
+				</KeyValues>
+				<Anchors>
+					<Anchor point="LEFT" relativeKey="$parent.SearchBox" relativePoint="RIGHT" x="5" y="0"/>
+				</Anchors>
+			</DropdownButton>
+			<Frame parentKey="PagingFrame" mixin="MCUDR_PagingMixin">
+				<Size x="120" y="28"/>
+				<Anchors>
+					<Anchor point="BOTTOM" x="0" y="5"/>
+				</Anchors>
+				<Frames>
+					<Button parentKey="PrevPageButton">
+						<Size x="28" y="28"/>
+						<Anchors>
+							<Anchor point="LEFT"/>
+						</Anchors>
+						<NormalTexture atlas="common-icon-rotateleft"/>
+						<HighlightTexture atlas="common-icon-rotateleft" alpha="0.4"/>
+						<Scripts>
+							<OnClick>self:GetParent():PreviousPage();</OnClick>
+						</Scripts>
+					</Button>
+					<Button parentKey="NextPageButton">
+						<Size x="28" y="28"/>
+						<Anchors>
+							<Anchor point="RIGHT"/>
+						</Anchors>
+						<NormalTexture atlas="common-icon-rotateright"/>
+						<HighlightTexture atlas="common-icon-rotateright" alpha="0.4"/>
+						<Scripts>
+							<OnClick>self:GetParent():NextPage();</OnClick>
+						</Scripts>
+					</Button>
+				</Frames>
+				<Layers>
+					<Layer level="ARTWORK">
+						<FontString parentKey="PageText" inherits="GameFontHighlightSmall" justifyH="CENTER">
+							<Anchors>
+								<Anchor point="CENTER"/>
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+			</Frame>
+			<DressUpModel parentArray="Models" parentKey="ModelR1C1" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOP" x="-235" y="-40"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR1C2" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR1C1" relativePoint="TOPRIGHT" x="16" y="0"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR1C3" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR1C2" relativePoint="TOPRIGHT" x="16" y="0"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR1C4" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR1C3" relativePoint="TOPRIGHT" x="16" y="0"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR1C5" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR1C4" relativePoint="TOPRIGHT" x="16" y="0"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR1C6" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR1C5" relativePoint="TOPRIGHT" x="16" y="0"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR2C1" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR1C1" relativePoint="BOTTOMLEFT" x="0" y="-24"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR2C2" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR2C1" relativePoint="TOPRIGHT" x="16" y="0"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR2C3" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR2C2" relativePoint="TOPRIGHT" x="16" y="0"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR2C4" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR2C3" relativePoint="TOPRIGHT" x="16" y="0"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR2C5" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR2C4" relativePoint="TOPRIGHT" x="16" y="0"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR2C6" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR2C5" relativePoint="TOPRIGHT" x="16" y="0"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR3C1" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR2C1" relativePoint="BOTTOMLEFT" x="0" y="-24"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR3C2" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR3C1" relativePoint="TOPRIGHT" x="16" y="0"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR3C3" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR3C2" relativePoint="TOPRIGHT" x="16" y="0"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR3C4" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR3C3" relativePoint="TOPRIGHT" x="16" y="0"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR3C5" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR3C4" relativePoint="TOPRIGHT" x="16" y="0"/>
+				</Anchors>
+			</DressUpModel>
+			<DressUpModel parentArray="Models" parentKey="ModelR3C6" inherits="MCUDR_WardrobeModelTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ModelR3C5" relativePoint="TOPRIGHT" x="16" y="0"/>
+				</Anchors>
+			</DressUpModel>
+		</Frames>
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+			<OnShow method="OnShow"/>
+			<OnHide method="OnHide"/>
+			<OnEvent method="OnEvent"/>
+			<OnMouseWheel method="OnMouseWheel"/>
+		</Scripts>
+	</Frame>
+</Ui>
