@@ -415,6 +415,8 @@ dressUpBtn:SetScript("OnClick", function()
             end
         end
 
+        MCUDR_PreviewedSlots = {}
+
         C_Timer.After(0.6, function()
             local actor = MCUDressingRoomFrame.CharacterPreview
                 and MCUDressingRoomFrame.CharacterPreview.ModelScene
@@ -424,10 +426,27 @@ dressUpBtn:SetScript("OnClick", function()
             -- Undress first so the player's own gear doesn't show through
             actor:Undress()
 
-            -- Apply transmog info for each slot
+            -- Apply transmog info for each slot and populate preview slots
             for slotID, info in pairs(infoList) do
                 local ignoreChildItems = slotID ~= INVSLOT_MAINHAND
                 actor:SetItemTransmogInfo(info, slotID, ignoreChildItems)
+
+                if info.appearanceID and info.appearanceID > 0 then
+                    local sourceInfo = C_TransmogCollection.GetSourceInfo(info.appearanceID)
+                    if sourceInfo then
+                        local itemIcon
+                        local itemID = sourceInfo.itemID or C_TransmogCollection.GetSourceItemID(info.appearanceID)
+                        if itemID then
+                            itemIcon = C_Item.GetItemIconByID(itemID) or select(5, C_Item.GetItemInfoInstant(itemID))
+                        end
+                        MCUDR_PreviewedSlots[slotID] = {
+                            icon = itemIcon or sourceInfo.icon or sourceInfo.texture,
+                            name = sourceInfo.name or "",
+                            quality = sourceInfo.quality,
+                            sourceID = info.appearanceID,
+                        }
+                    end
+                end
             end
 
             -- For slots where transmog is "none" (showing base item), TryOn the actual item
@@ -435,6 +454,16 @@ dressUpBtn:SetScript("OnClick", function()
                 local info = infoList[slotID]
                 if not info or (info.appearanceID and info.appearanceID == 0) then
                     actor:TryOn(link)
+                    local itemName, _, quality, _, _, _, _, _, _, itemIcon = C_Item.GetItemInfo(link)
+                    if not itemIcon then
+                        itemIcon = select(5, C_Item.GetItemInfoInstant(link))
+                    end
+                    MCUDR_PreviewedSlots[slotID] = {
+                        link = link,
+                        icon = itemIcon,
+                        name = itemName or "",
+                        quality = quality,
+                    }
                 end
             end
 
@@ -1058,6 +1087,45 @@ local function RefreshAll()
 end
 
 ---------------------------------------------------------------------------
+-- Inspect retry logic
+---------------------------------------------------------------------------
+local pendingInspect = nil
+local INSPECT_TIMEOUT = 2
+local MAX_RETRIES = 3
+
+local function CancelPendingInspect()
+    if pendingInspect and pendingInspect.timer then
+        pendingInspect.timer:Cancel()
+    end
+    pendingInspect = nil
+end
+
+local function ScheduleInspectRetry()
+    if not pendingInspect then return end
+
+    if pendingInspect.retries >= MAX_RETRIES then
+        -- Give up — show the frame with whatever data we have
+        CancelPendingInspect()
+        frame:Show()
+        UpdateModel()
+        RefreshAll()
+        return
+    end
+
+    local unit = pendingInspect.unit
+    local guid = pendingInspect.guid
+
+    if not UnitExists(unit) or UnitGUID(unit) ~= guid or not CanInspect(unit, true) then
+        CancelPendingInspect()
+        return
+    end
+
+    pendingInspect.retries = pendingInspect.retries + 1
+    NotifyInspect(unit)
+    pendingInspect.timer = C_Timer.NewTimer(INSPECT_TIMEOUT, ScheduleInspectRetry)
+end
+
+---------------------------------------------------------------------------
 -- Events
 ---------------------------------------------------------------------------
 frame:RegisterEvent("INSPECT_READY")
@@ -1071,6 +1139,14 @@ frame:SetScript("OnEvent", function(self, event, ...)
     if event == "INSPECT_READY" then
         local guid = ...
         if self.unit and UnitGUID(self.unit) == guid then
+            local ilevel = C_PaperDollInfo.GetInspectItemLevel(self.unit)
+            if (not ilevel or ilevel == 0) and pendingInspect and pendingInspect.guid == guid then
+                -- Data didn't fully load; cancel current timer and retry
+                if pendingInspect.timer then pendingInspect.timer:Cancel() end
+                ScheduleInspectRetry()
+                return
+            end
+            CancelPendingInspect()
             self:Show()
             UpdateModel()
             RefreshAll()
@@ -1102,6 +1178,7 @@ end)
 
 frame:SetScript("OnHide", function(self)
     PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
+    CancelPendingInspect()
     self.unit = nil
     ClearInspectPlayer()
 end)
@@ -1122,10 +1199,14 @@ end)
 function ns:ShowInspect(unit)
     if not unit then return end
 
+    CancelPendingInspect()
+    local guid = UnitGUID(unit)
+    if not guid then return end
+
     frame.unit = unit
-    UpdateModel()
-    frame:Show()
-    RefreshAll()
+    pendingInspect = { guid = guid, unit = unit, retries = 0 }
+    NotifyInspect(unit)
+    pendingInspect.timer = C_Timer.NewTimer(INSPECT_TIMEOUT, ScheduleInspectRetry)
 end
 
 ---------------------------------------------------------------------------
@@ -1139,7 +1220,6 @@ function ns:InitInspectHooks()
     InspectUnit = function(unit, ...)
         if ns.db and ns.db.global and ns.db.global.overrideInspect then
             if unit and CanInspect(unit, true) then
-                NotifyInspect(unit)
                 ns:ShowInspect(unit)
             end
             return

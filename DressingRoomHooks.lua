@@ -42,12 +42,6 @@ local function ShowOurDressingRoom()
     end
 end
 
-local function HideBlizzardDressUp()
-    if DressUpFrame and DressUpFrame:IsShown() then
-        DressUpFrame:Hide()
-    end
-end
-
 local function RefreshSlotsAfterTryOn()
     C_Timer.After(0.3, function()
         if MCUDressingRoomFrame and MCUDressingRoomFrame.CharacterPreview
@@ -131,91 +125,82 @@ function ns:InitDressingRoomHooks()
     end
 
     ---------------------------------------------------------------------------
-    -- Use hooksecurefunc for ALL hooks to avoid tainting secure execution.
-    -- Post-hooks run AFTER the original Blizzard function completes.
-    -- When we should override, we defer to next frame (C_Timer.After(0))
-    -- to cleanly break out of the secure context, then hide Blizzard's
-    -- DressUpFrame and show ours.
+    -- Replace DressUp globals with wrappers (pre-hook pattern) so that
+    -- Blizzard's DressUpFrame is never opened via ShowUIPanel when we
+    -- override.  This is the same approach used for ToggleCharacter
+    -- (Settings.lua) and InspectUnit (InspectFrame.lua).
+    --
+    -- The previous approach used hooksecurefunc (post-hooks) which let the
+    -- original function run first — opening DressUpFrame through ShowUIPanel.
+    -- We then had to call DressUpFrame:Hide() from addon code, which tainted
+    -- the UI-panel management state and broke the ESC / game-menu.
     ---------------------------------------------------------------------------
 
     if DressUpLink then
-        hooksecurefunc("DressUpLink", function(link)
-            if ShouldPassThrough() or not link then return end
-            C_Timer.After(0, function()
-                HideBlizzardDressUp()
-                TryOnItem(link)
-            end)
-        end)
+        local original = DressUpLink
+        DressUpLink = function(link)
+            if ShouldPassThrough() or not link then return original(link) end
+            TryOnItem(link)
+        end
     end
 
     if DressUpItemLink then
-        hooksecurefunc("DressUpItemLink", function(link)
-            if ShouldPassThrough() or not link then return end
-            C_Timer.After(0, function()
-                HideBlizzardDressUp()
-                TryOnItem(link)
-            end)
-        end)
+        local original = DressUpItemLink
+        DressUpItemLink = function(link)
+            if ShouldPassThrough() or not link then return original(link) end
+            TryOnItem(link)
+        end
     end
 
     if DressUpVisual then
-        hooksecurefunc("DressUpVisual", function(link, ...)
-            if ShouldPassThrough() then return end
-            C_Timer.After(0, function()
-                HideBlizzardDressUp()
-                TryOnItem(link)
-            end)
-        end)
+        local original = DressUpVisual
+        DressUpVisual = function(link, ...)
+            if ShouldPassThrough() then return original(link, ...) end
+            TryOnItem(link)
+        end
     end
 
     if DressUpVisualLink then
-        hooksecurefunc("DressUpVisualLink", function(forcedFrame, link, ...)
-            if ShouldPassThrough() then return end
-            C_Timer.After(0, function()
-                HideBlizzardDressUp()
-                TryOnItem(link)
-            end)
-        end)
+        local original = DressUpVisualLink
+        DressUpVisualLink = function(forcedFrame, link, ...)
+            if ShouldPassThrough() then return original(forcedFrame, link, ...) end
+            TryOnItem(link)
+        end
     end
 
     if DressUpItemLocation then
-        hooksecurefunc("DressUpItemLocation", function(itemLocation)
-            if ShouldPassThrough() then return end
+        local original = DressUpItemLocation
+        DressUpItemLocation = function(itemLocation)
+            if ShouldPassThrough() then return original(itemLocation) end
             if itemLocation then
                 local link = C_Item.GetItemLink(itemLocation)
                 if link then
-                    C_Timer.After(0, function()
-                        HideBlizzardDressUp()
-                        TryOnItem(link)
-                    end)
+                    TryOnItem(link)
                 end
             end
-        end)
+        end
     end
 
     if DressUpMount then
-        hooksecurefunc("DressUpMount", function(mountID, ...)
-            if ShouldPassThrough() then return end
-            C_Timer.After(0, function()
-                HideBlizzardDressUp()
-                ShowOurDressingRoom()
-            end)
-        end)
+        local original = DressUpMount
+        DressUpMount = function(mountID, ...)
+            if ShouldPassThrough() then return original(mountID, ...) end
+            ShowOurDressingRoom()
+        end
     end
 
     if DressUpBattlePet then
-        hooksecurefunc("DressUpBattlePet", function(...)
-            if ShouldPassThrough() then return end
-            C_Timer.After(0, function()
-                HideBlizzardDressUp()
-                ShowOurDressingRoom()
-            end)
-        end)
+        local original = DressUpBattlePet
+        DressUpBattlePet = function(...)
+            if ShouldPassThrough() then return original(...) end
+            ShowOurDressingRoom()
+        end
     end
 
     if DressUpTransmogSet then
-        hooksecurefunc("DressUpTransmogSet", function(itemModifiedAppearanceIDs)
-            if ShouldPassThrough() then return end
+        local original = DressUpTransmogSet
+        DressUpTransmogSet = function(itemModifiedAppearanceIDs)
+            if ShouldPassThrough() then return original(itemModifiedAppearanceIDs) end
             -- Copy the IDs table since it may be recycled
             local ids = {}
             if itemModifiedAppearanceIDs then
@@ -223,9 +208,8 @@ function ns:InitDressingRoomHooks()
                     ids[i] = id
                 end
             end
-            C_Timer.After(0, function()
-                HideBlizzardDressUp()
-                ShowOurDressingRoom()
+            ShowOurDressingRoom()
+            C_Timer.After(0.5, function()
                 local actor = GetPlayerActor()
                 if actor and #ids > 0 then
                     for _, id in ipairs(ids) do
@@ -234,95 +218,91 @@ function ns:InitDressingRoomHooks()
                     RefreshSlotsAfterTryOn()
                 end
             end)
-        end)
+        end
     end
 
     if DressUpCollectionAppearance then
-        hooksecurefunc("DressUpCollectionAppearance", function(appearanceID, transmogLocation, categoryID)
-            if ShouldPassThrough() then return end
-            -- Capture slot before deferring (transmogLocation table may be recycled)
+        local original = DressUpCollectionAppearance
+        DressUpCollectionAppearance = function(appearanceID, transmogLocation, categoryID)
+            if ShouldPassThrough() then return original(appearanceID, transmogLocation, categoryID) end
+            -- Capture slot (transmogLocation table may be recycled)
             local slotID = transmogLocation and transmogLocation.GetSlot
                 and transmogLocation:GetSlot()
-            C_Timer.After(0, function()
-                HideBlizzardDressUp()
-                if not MCUDressingRoomFrame or not MCUDressingRoomFrame:IsShown() then
-                    ShowOurDressingRoom()
-                end
-                C_Timer.After(0.5, function()
-                    local actor = GetPlayerActor()
-                    if actor and appearanceID then
-                        actor:TryOn(appearanceID)
+            if not MCUDressingRoomFrame or not MCUDressingRoomFrame:IsShown() then
+                ShowOurDressingRoom()
+            end
+            C_Timer.After(0.5, function()
+                local actor = GetPlayerActor()
+                if actor and appearanceID then
+                    actor:TryOn(appearanceID)
 
-                        -- Track preview state
-                        if slotID then
-                            local sources = C_TransmogCollection.GetAppearanceSources(appearanceID)
-                            if sources and #sources > 0 then
-                                local best = sources[1]
-                                for _, s in ipairs(sources) do
-                                    if s.isCollected then best = s; break end
-                                end
-                                local itemIcon
-                                local itemID = best.itemID or C_TransmogCollection.GetSourceItemID(best.sourceID or appearanceID)
-                                if itemID then
-                                    itemIcon = C_Item.GetItemIconByID(itemID) or select(5, C_Item.GetItemInfoInstant(itemID))
-                                end
-                                MCUDR_PreviewedSlots[slotID] = {
-                                    icon = itemIcon or best.icon or best.texture,
-                                    name = best.name,
-                                    quality = best.quality,
-                                    sourceID = best.sourceID or appearanceID,
-                                }
+                    -- Track preview state
+                    if slotID then
+                        local sources = C_TransmogCollection.GetAppearanceSources(appearanceID)
+                        if sources and #sources > 0 then
+                            local best = sources[1]
+                            for _, s in ipairs(sources) do
+                                if s.isCollected then best = s; break end
                             end
+                            local itemIcon
+                            local itemID = best.itemID or C_TransmogCollection.GetSourceItemID(best.sourceID or appearanceID)
+                            if itemID then
+                                itemIcon = C_Item.GetItemIconByID(itemID) or select(5, C_Item.GetItemInfoInstant(itemID))
+                            end
+                            MCUDR_PreviewedSlots[slotID] = {
+                                icon = itemIcon or best.icon or best.texture,
+                                name = best.name,
+                                quality = best.quality,
+                                sourceID = best.sourceID or appearanceID,
+                            }
                         end
-                        RefreshSlotsAfterTryOn()
                     end
-                end)
+                    RefreshSlotsAfterTryOn()
+                end
             end)
-        end)
+        end
     end
 
     if DressUpItemTransmogInfoList then
-        hooksecurefunc("DressUpItemTransmogInfoList", function(itemTransmogInfoList, showDetails, forceRefresh)
-            if ShouldPassThrough() then return end
-            -- Copy the info list before deferring
+        local original = DressUpItemTransmogInfoList
+        DressUpItemTransmogInfoList = function(itemTransmogInfoList, showDetails, forceRefresh)
+            if ShouldPassThrough() then return original(itemTransmogInfoList, showDetails, forceRefresh) end
+            -- Copy the info list since it may be recycled
             local infoCopy = {}
             if itemTransmogInfoList then
                 for slotID, info in pairs(itemTransmogInfoList) do
                     infoCopy[slotID] = info
                 end
             end
-            C_Timer.After(0, function()
-                HideBlizzardDressUp()
-                ShowOurDressingRoom()
-                MCUDR_PreviewedSlots = {}
-                C_Timer.After(0.5, function()
-                    local actor = GetPlayerActor()
-                    if actor then
-                        for slotID, info in pairs(infoCopy) do
-                            actor:SetItemTransmogInfo(info, slotID)
-                            -- Track each slot
-                            if info.appearanceID and info.appearanceID > 0 then
-                                local sourceInfo = C_TransmogCollection.GetSourceInfo(info.appearanceID)
-                                if sourceInfo and sourceInfo.name then
-                                    local itemIcon
-                                    local itemID = sourceInfo.itemID or C_TransmogCollection.GetSourceItemID(info.appearanceID)
-                                    if itemID then
-                                        itemIcon = C_Item.GetItemIconByID(itemID) or select(5, C_Item.GetItemInfoInstant(itemID))
-                                    end
-                                    MCUDR_PreviewedSlots[slotID] = {
-                                        icon = itemIcon,
-                                        name = sourceInfo.name,
-                                        quality = sourceInfo.quality,
-                                        sourceID = info.appearanceID,
-                                    }
+            ShowOurDressingRoom()
+            MCUDR_PreviewedSlots = {}
+            C_Timer.After(0.5, function()
+                local actor = GetPlayerActor()
+                if actor then
+                    for slotID, info in pairs(infoCopy) do
+                        actor:SetItemTransmogInfo(info, slotID)
+                        -- Track each slot
+                        if info.appearanceID and info.appearanceID > 0 then
+                            local sourceInfo = C_TransmogCollection.GetSourceInfo(info.appearanceID)
+                            if sourceInfo and sourceInfo.name then
+                                local itemIcon
+                                local itemID = sourceInfo.itemID or C_TransmogCollection.GetSourceItemID(info.appearanceID)
+                                if itemID then
+                                    itemIcon = C_Item.GetItemIconByID(itemID) or select(5, C_Item.GetItemInfoInstant(itemID))
                                 end
+                                MCUDR_PreviewedSlots[slotID] = {
+                                    icon = itemIcon,
+                                    name = sourceInfo.name,
+                                    quality = sourceInfo.quality,
+                                    sourceID = info.appearanceID,
+                                }
                             end
                         end
-                        RefreshSlotsAfterTryOn()
                     end
-                end)
+                    RefreshSlotsAfterTryOn()
+                end
             end)
-        end)
+        end
     end
 end
 
