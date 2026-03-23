@@ -25,7 +25,7 @@ A High-resolution UI for the character panel, dressing room, and inspect window 
 - Click any appearance to preview it instantly; previewed items are highlighted with page navigation
 - Click equipment slots to browse appearances, right-click to undress
 - Save and load custom outfit sets
-- View in Dressing Room button on the inspect window previews the full outfit
+- Click any item slot being previewed to view it in your collection instantly
 
 ![Dressing Room](https://media.forgecdn.net/attachments/1595/667/wowscrnshot_032326_135559-jpg.jpg)
 
