@@ -101,7 +101,7 @@ local function TryOnItem(link)
 
     -- If item wasn't cached, retry when it becomes available
     if not C_Item.GetItemInfo(link) then
-        C_Item.RequestLoadItemData(C_Item.GetItemInfoInstant(link))
+        C_Item.RequestLoadItemDataByID(C_Item.GetItemInfoInstant(link))
         C_Timer.After(0.5, function()
             StorePreviewSlot(link)
             RefreshSlotsAfterTryOn()
