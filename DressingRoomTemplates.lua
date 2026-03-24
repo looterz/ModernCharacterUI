@@ -191,12 +191,9 @@ function MCUDR_OutfitEntryMixin:CheckPendingAction(callback, includeViewedOutfit
 end
 
 function MCUDR_OutfitEntryMixin:UpdateCooldown()
-	local cooldownInfo = C_Spell.GetSpellCooldown(Constants.TransmogOutfitDataConsts.EQUIP_TRANSMOG_OUTFIT_MANUAL_SPELL_ID);
-	if cooldownInfo then
-		CooldownFrame_Set(self.OutfitIcon.Cooldown, cooldownInfo.startTime, cooldownInfo.duration, cooldownInfo.isEnabled);
-	else
-		CooldownFrame_Clear(self.OutfitIcon.Cooldown);
-	end
+	-- C_Spell.GetSpellCooldown returns tainted (secret) values that cannot
+	-- be passed to CooldownFrame_Set from addon context.  The cooldown
+	-- display is non-essential in the dressing room, so skip it entirely.
 end
 
 
