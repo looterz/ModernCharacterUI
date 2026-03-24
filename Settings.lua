@@ -11,6 +11,7 @@ local defaults = {
         blockInCombat = true,
         showEnchantStatus = false,
         showUpgradeTrack = false,
+        slotFontSize = 10,
         characterScale = 100,
         inspectScale = 100,
         dressingRoomScale = 100,
@@ -173,13 +174,32 @@ function MCU:GetOptions()
                     if ns.RefreshAll then ns:RefreshAll() end
                 end,
             },
-            scaleHeader = {
+            slotFontSize = {
                 order = 8,
+                type = "range",
+                name = "Slot Overlay Font Size",
+                desc = "Adjust the font size for item level, upgrade track, "
+                    .. "and other text on equipment slots.",
+                min = 8,
+                max = 16,
+                step = 1,
+                width = "full",
+                get = function()
+                    return self.db.global.slotFontSize
+                end,
+                set = function(_, value)
+                    self.db.global.slotFontSize = value
+                    ns:ApplySlotFontSize()
+                    if ns.RefreshAll then ns:RefreshAll() end
+                end,
+            },
+            scaleHeader = {
+                order = 9,
                 type = "header",
                 name = "Window Scale",
             },
             characterScale = {
-                order = 9,
+                order = 10,
                 type = "range",
                 name = "Character Panel Scale",
                 desc = "Adjust the size of the Character Panel window.",
@@ -201,7 +221,7 @@ function MCU:GetOptions()
                 end,
             },
             inspectScale = {
-                order = 10,
+                order = 11,
                 type = "range",
                 name = "Inspect Window Scale",
                 desc = "Adjust the size of the Inspect window.",
@@ -223,7 +243,7 @@ function MCU:GetOptions()
                 end,
             },
             dressingRoomScale = {
-                order = 11,
+                order = 12,
                 type = "range",
                 name = "Dressing Room Scale",
                 desc = "Adjust the size of the Dressing Room window.",

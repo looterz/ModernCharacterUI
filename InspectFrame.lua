@@ -220,6 +220,7 @@ frame.model = model
 -- Create Equipment Slot Button (inspect version)
 ---------------------------------------------------------------------------
 local slotButtons = {}
+frame.slotButtons = slotButtons
 
 local function CreateInspectSlot(parent, slotInfo, index, anchorPoint, xOff, yOff)
     local btn = CreateFrame("Button", nil, parent)

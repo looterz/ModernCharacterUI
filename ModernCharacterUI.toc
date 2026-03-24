@@ -2,7 +2,7 @@
 ## Title: Modern Character UI
 ## Notes: High-resolution UI for the character panel, dressing room, and inspect window with Midnight-style design
 ## Author: looterz
-## Version: 1.1.4
+## Version: 1.1.5
 ## SavedVariables: ModernCharacterUIDB
 ## IconTexture: Interface\Icons\INV_Chest_Cloth_17
 

@@ -267,6 +267,7 @@ frame:SetScript("OnEvent", function(self, event, arg1, ...)
             self:SetPoint(pos[1], UIParent, pos[2], pos[3], pos[4])
         end
         ns:ApplyFrameScale()
+        ns:ApplySlotFontSize()
         return
     end
 

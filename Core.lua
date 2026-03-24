@@ -76,6 +76,37 @@ function ns:ApplyFrameScale()
     end
 end
 
+--- Apply user-configured font size to all equipment slot overlay text.
+function ns:ApplySlotFontSize()
+    if not ns.db or not ns.db.global then return end
+    local fontSize = ns.db.global.slotFontSize or 10
+    local upgradeFontSize = max(fontSize - 1, 8)
+
+    -- Character Panel slots
+    if ns.slotButtons then
+        for _, btn in pairs(ns.slotButtons) do
+            if btn.ilvlText then
+                btn.ilvlText:SetFont(STANDARD_TEXT_FONT, fontSize, "OUTLINE")
+            end
+            if btn.upgradeText then
+                btn.upgradeText:SetFont(STANDARD_TEXT_FONT, upgradeFontSize, "OUTLINE")
+            end
+        end
+    end
+
+    -- Inspect Panel slots
+    if MCUInspectFrame and MCUInspectFrame.slotButtons then
+        for _, btn in pairs(MCUInspectFrame.slotButtons) do
+            if btn.ilvlText then
+                btn.ilvlText:SetFont(STANDARD_TEXT_FONT, fontSize, "OUTLINE")
+            end
+            if btn.upgradeText then
+                btn.upgradeText:SetFont(STANDARD_TEXT_FONT, upgradeFontSize, "OUTLINE")
+            end
+        end
+    end
+end
+
 --- Try the two-return form of GetInventorySlotInfo first; fall back to the
 --- pre-baked file-ID table above.
 function ns:GetEmptySlotTexture(slotID, slotName)
