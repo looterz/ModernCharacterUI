@@ -410,8 +410,15 @@ function ns:UpdateStats()
     statLines.movespeed.label:SetTextColor(0.9, 0.9, 0.9, 1)
     statLines.movespeed.value:SetTextColor(0.9, 0.9, 0.9, 1)
 
-    local avgItemLevel, avgItemLevelEquipped = GetAverageItemLevel()
-    ilvlValue:SetText(format("%.1f", avgItemLevelEquipped or 0))
+    local avgItemLevel, avgItemLevelEquipped, avgItemLevelPvP = GetAverageItemLevel()
+    if ns:IsInPvPZone() and avgItemLevelPvP and avgItemLevelPvP > 0
+       and floor(avgItemLevelPvP) ~= floor(avgItemLevelEquipped or 0) then
+        ilvlValue:SetText(format("%.1f", avgItemLevelPvP))
+        ilvlValue:SetTextColor(0.0, 1.0, 0.0, 1)
+    else
+        ilvlValue:SetText(format("%.1f", avgItemLevelEquipped or 0))
+        ilvlValue:SetTextColor(1, 0.82, 0, 1)
+    end
 
     local _, str = UnitStat("player", 1)
     local _, agi = UnitStat("player", 2)

@@ -3,7 +3,7 @@ local addonName, ns = ...
 local frame = CreateFrame("Frame", "ModernCharacterUIFrame", UIParent, "PortraitFrameTemplate")
 frame:SetSize(ns.FRAME_WIDTH, ns.FRAME_HEIGHT)
 frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -104)
-frame:SetFrameStrata("MEDIUM")
+frame:SetFrameStrata("HIGH")
 frame:SetClampedToScreen(true)
 frame:Hide()
 ns.frame = frame
@@ -231,6 +231,7 @@ local GLOBAL_EVENTS = {
     "KNOWN_TITLES_UPDATE",
     "EQUIPMENT_SETS_CHANGED",
     "EQUIPMENT_SWAP_FINISHED",
+    "ZONE_CHANGED_NEW_AREA",
     "UPDATE_FACTION",
     "MAJOR_FACTION_RENOWN_LEVEL_CHANGED",
     "CURRENCY_DISPLAY_UPDATE",
@@ -287,6 +288,8 @@ frame:SetScript("OnEvent", function(self, event, arg1, ...)
         UpdateTitle()
         if ns.UpdateTitleDropdown then ns:UpdateTitleDropdown() end
         if ns.UpdateStats then ns:UpdateStats() end
+    elseif event == "ZONE_CHANGED_NEW_AREA" then
+        ns:RefreshAll()
     elseif event == "EQUIPMENT_SETS_CHANGED" or event == "EQUIPMENT_SWAP_FINISHED" then
         if ns.UpdateEquipmentSets then ns:UpdateEquipmentSets() end
     elseif event == "UPDATE_FACTION" or event == "MAJOR_FACTION_RENOWN_LEVEL_CHANGED" then

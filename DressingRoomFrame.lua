@@ -846,6 +846,9 @@ end
 MCUDR_ShowEquippedGearSpellFrameMixin = {};
 
 function MCUDR_ShowEquippedGearSpellFrameMixin:OnLoad()
+	-- Suppress cooldown update during OnLoad to avoid tainting
+	-- CooldownFrame_Set — this frame is hidden in the dressing room.
+	self.UpdateCooldown = function() end;
 	UIPanelSpellButtonFrameMixin.OnLoad(self);
 
 	local drawBling = false;

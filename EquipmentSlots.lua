@@ -183,13 +183,21 @@ function ns:UpdateSlot(slotID)
             elseif GetDetailedItemLevelInfo then
                 effectiveILvl = GetDetailedItemLevelInfo(itemLink)
             end
-            if effectiveILvl and effectiveILvl > 0 then
+
+            local pvpIlvl = ns:IsInPvPZone() and ns:GetPvPItemLevel(slotID) or nil
+            if pvpIlvl and pvpIlvl > 0 and pvpIlvl ~= effectiveILvl then
+                btn.ilvlText:SetText(pvpIlvl)
+                btn.ilvlText:SetTextColor(0.0, 1.0, 0.0, 1)
+            elseif effectiveILvl and effectiveILvl > 0 then
                 btn.ilvlText:SetText(effectiveILvl)
+                btn.ilvlText:SetTextColor(1, 0.82, 0, 1)
             else
                 btn.ilvlText:SetText("")
+                btn.ilvlText:SetTextColor(1, 0.82, 0, 1)
             end
         else
             btn.ilvlText:SetText("")
+            btn.ilvlText:SetTextColor(1, 0.82, 0, 1)
         end
 
         local start, duration, enable = GetInventoryItemCooldown("player", slotID)

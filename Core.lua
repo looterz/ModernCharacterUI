@@ -86,6 +86,39 @@ function ns:GetQualityColor(quality)
     return 1, 1, 1
 end
 
+--- Returns true when the player is in a PvP context where PvP item levels apply.
+function ns:IsInPvPZone()
+    if C_PvP then
+        if C_PvP.IsPVPMap and C_PvP.IsPVPMap() then return true end
+        if C_PvP.IsWarModeActive and C_PvP.IsWarModeActive() then return true end
+    end
+    if IsActiveBattlefieldArena and IsActiveBattlefieldArena() then return true end
+    return false
+end
+
+--- Get the PvP item level for an equipped slot by scanning tooltip data.
+--- Returns the PvP ilvl number, or nil if the item has no PvP ilvl.
+function ns:GetPvPItemLevel(slotID)
+    if not C_TooltipInfo or not C_TooltipInfo.GetInventoryItem then return nil end
+    local data = C_TooltipInfo.GetInventoryItem("player", slotID)
+    if not data or not data.lines then return nil end
+    for _, line in ipairs(data.lines) do
+        local text = line.leftText
+        if text then
+            -- Match the localized "PvP Item Level %d" string if available
+            if PVP_ITEM_LEVEL_TOOLTIP then
+                local pattern = PVP_ITEM_LEVEL_TOOLTIP:gsub("%%d", "(%%d+)")
+                local pvpIlvl = text:match(pattern)
+                if pvpIlvl then return tonumber(pvpIlvl) end
+            end
+            -- Fallback: match English "PvP Item Level 123"
+            local pvpIlvl = text:match("PvP Item Level (%d+)")
+            if pvpIlvl then return tonumber(pvpIlvl) end
+        end
+    end
+    return nil
+end
+
 --- Create a filter/gear button and its dropdown panel.
 --- Returns filterBtn, dropdown, and helper functions.
 ---   addRadio(label, isChecked, onClick)

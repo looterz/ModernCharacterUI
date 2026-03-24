@@ -3,7 +3,7 @@
 
 	<Script file="DressingRoomFrame.lua"/>
 
-	<Frame name="MCUDressingRoomFrame" mixin="MCUDR_FrameMixin" inherits="PortraitFrameTemplate" parent="UIParent" toplevel="true" enableMouse="true" hidden="true">
+	<Frame name="MCUDressingRoomFrame" mixin="MCUDR_FrameMixin" inherits="PortraitFrameTemplate" parent="UIParent" toplevel="true" enableMouse="true" hidden="true" frameStrata="HIGH">
 		<KeyValues>
 			<KeyValue key="collapsedWidth" value="1308" type="number"/>
 		</KeyValues>
