@@ -71,6 +71,9 @@ local function PreviewMount(mountID)
         C_MountJournal.GetMountInfoExtraByID(mountID)
     if not creatureDisplayID or creatureDisplayID == 0 then return end
 
+    -- Show mount collection on the right sidebar
+    ns:ShowMountCollection(mountID)
+
     C_Timer.After(0.3, function()
         local modelScene = GetModelScene()
         if not modelScene then return end
@@ -81,11 +84,28 @@ local function PreviewMount(mountID)
             playerActor:ClearModel()
         end
 
-        -- Hide equipment slots during mount preview
+        -- Hide equipment slots and show mount name during mount preview
         local charPreview = MCUDressingRoomFrame.CharacterPreview
-        if charPreview and charPreview.drSlotFrames then
-            for _, btn in pairs(charPreview.drSlotFrames) do
-                btn:Hide()
+        if charPreview then
+            if charPreview.drSlotFrames then
+                for _, btn in pairs(charPreview.drSlotFrames) do
+                    btn:Hide()
+                end
+            end
+            if not charPreview.MountNameLabel then
+                local label = charPreview:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+                label:SetPoint("TOP", charPreview, "TOP", 0, -12)
+                label:SetTextColor(1, 0.82, 0, 1)
+                charPreview.MountNameLabel = label
+            end
+            local mountName = C_MountJournal.GetMountInfoByID(mountID)
+            charPreview.MountNameLabel:SetText(mountName or "")
+            charPreview.MountNameLabel:Show()
+            -- Move camera controls below the mount name
+            local controlFrame = charPreview.ModelScene and charPreview.ModelScene.ControlFrame
+            if controlFrame then
+                controlFrame:ClearAllPoints()
+                controlFrame:SetPoint("TOP", charPreview.MountNameLabel, "BOTTOM", 0, -4)
             end
         end
 
@@ -126,6 +146,286 @@ local function PreviewMount(mountID)
             camera:SetMaxZoomDistance(camera:GetMaxZoomDistance() * 2.5)
         end
     end)
+end
+
+function ns:PreviewMount(mountID)
+    PreviewMount(mountID)
+end
+
+---------------------------------------------------------------------------
+-- Mount Collection Grid (model-based, paged — matches item collection)
+---------------------------------------------------------------------------
+local mountCollectionFrame = nil
+local mountSearchBox = nil
+local currentPreviewMountID = nil
+
+local MOUNT_NUM_ROWS = 5
+local MOUNT_NUM_COLS = 6
+local MOUNT_PAGE_SIZE = MOUNT_NUM_ROWS * MOUNT_NUM_COLS
+local MOUNT_MODEL_WIDTH = 78
+local MOUNT_MODEL_HEIGHT = 104
+local MOUNT_COL_GAP = 16
+local MOUNT_ROW_GAP = 24
+
+local function GetMountList()
+    local list = {}
+    for i = 1, C_MountJournal.GetNumDisplayedMounts() do
+        local creatureName, spellID, icon, active, isUsable, sourceType, isFavorite,
+              isFactionSpecific, faction, isFiltered, isCollected, mountID = C_MountJournal.GetDisplayedMountInfo(i)
+        if mountID then
+            local creatureDisplayID, descriptionText, sourceText = C_MountJournal.GetMountInfoExtraByID(mountID)
+            list[#list + 1] = {
+                mountID = mountID,
+                name = creatureName,
+                icon = icon,
+                isCollected = isCollected,
+                isUsable = isUsable,
+                isFavorite = isFavorite,
+                creatureDisplayID = creatureDisplayID or 0,
+                description = descriptionText or "",
+                source = sourceText or "",
+            }
+        end
+    end
+    return list
+end
+
+local function UpdateMountModels()
+    if not mountCollectionFrame or not mountCollectionFrame:IsShown() then return end
+
+    local frame = mountCollectionFrame
+    local page = frame.PagingFrame:GetCurrentPage()
+    local offset = (page - 1) * MOUNT_PAGE_SIZE
+
+    for i = 1, MOUNT_PAGE_SIZE do
+        local model = frame.Models[i]
+        local entry = frame.mountList[offset + i]
+        if entry then
+            model:Show()
+            if model._mountID ~= entry.mountID then
+                model:SetDisplayInfo(entry.creatureDisplayID)
+                model._mountID = entry.mountID
+            end
+            model.mountData = entry
+
+            -- Border
+            if not entry.isCollected then
+                model.Border:SetAtlas("transmog-wardrobe-border-uncollected")
+            elseif not entry.isUsable then
+                model.Border:SetAtlas("transmog-wardrobe-border-unusable")
+            else
+                model.Border:SetAtlas("transmog-wardrobe-border-collected")
+            end
+
+            -- Highlight the currently previewed mount
+            model.TransmogStateTexture:SetShown(entry.mountID == currentPreviewMountID)
+
+            -- Favorite
+            if model.Favorite then
+                model.Favorite.Icon:SetShown(entry.isFavorite or false)
+            end
+
+            model.NewString:Hide()
+            model.NewGlow:Hide()
+            model.SlotInvalidTexture:Hide()
+            model.DisabledOverlay:SetShown(not entry.isCollected)
+            if model.HideVisual then model.HideVisual.Icon:Hide() end
+        else
+            model:Hide()
+            model._mountID = nil
+            model.mountData = nil
+        end
+    end
+end
+
+local function RefreshMountCollection()
+    if not mountCollectionFrame or not mountCollectionFrame:IsShown() then return end
+    local frame = mountCollectionFrame
+    frame.mountList = GetMountList()
+    frame.PagingFrame:SetMaxPages(max(1, ceil(#frame.mountList / MOUNT_PAGE_SIZE)))
+    UpdateMountModels()
+end
+
+local function NavigateToMount(mountID)
+    if not mountCollectionFrame or not mountID then return end
+    local frame = mountCollectionFrame
+    if not frame.mountList then return end
+    for i, entry in ipairs(frame.mountList) do
+        if entry.mountID == mountID then
+            local page = ceil(i / MOUNT_PAGE_SIZE)
+            frame.PagingFrame:SetCurrentPage(page)
+            break
+        end
+    end
+    UpdateMountModels()
+end
+
+local function CreateMountCollectionFrame()
+    local parent = MCUDressingRoomFrame.WardrobeCollection
+
+    local frame = CreateFrame("Frame", nil, parent)
+    frame:SetAllPoints()
+    frame:SetFrameLevel(parent:GetFrameLevel() + 2)
+    frame:Hide()
+    frame.mountList = {}
+
+    -- Search box
+    local search = CreateFrame("EditBox", nil, frame, "SearchBoxTemplate")
+    search:SetSize(260, 20)
+    search:SetPoint("TOP", 0, -110)
+    search:SetAutoFocus(false)
+    search:SetScript("OnTextChanged", function(self)
+        SearchBoxTemplate_OnTextChanged(self)
+        C_MountJournal.SetSearch(self:GetText())
+    end)
+    mountSearchBox = search
+
+    -- Paging frame (reuse the same mixin pattern)
+    local pagingFrame = CreateFrame("Frame", nil, frame)
+    pagingFrame:SetSize(120, 28)
+    pagingFrame:SetPoint("BOTTOM", 0, 8)
+    Mixin(pagingFrame, MCUDR_PagingMixin)
+    pagingFrame:OnLoad()
+
+    local pageText = pagingFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    pageText:SetPoint("CENTER")
+    pagingFrame.PageText = pageText
+
+    local prevBtn = CreateFrame("Button", nil, pagingFrame)
+    prevBtn:SetSize(28, 28)
+    prevBtn:SetPoint("LEFT")
+    prevBtn:SetNormalAtlas("common-icon-rotateleft")
+    prevBtn:SetHighlightAtlas("common-icon-rotateleft")
+    prevBtn:GetHighlightTexture():SetAlpha(0.4)
+    prevBtn:SetScript("OnClick", function() pagingFrame:PreviousPage() end)
+
+    local nextBtn = CreateFrame("Button", nil, pagingFrame)
+    nextBtn:SetSize(28, 28)
+    nextBtn:SetPoint("RIGHT")
+    nextBtn:SetNormalAtlas("common-icon-rotateright")
+    nextBtn:SetHighlightAtlas("common-icon-rotateright")
+    nextBtn:GetHighlightTexture():SetAlpha(0.4)
+    nextBtn:SetScript("OnClick", function() pagingFrame:NextPage() end)
+
+    pagingFrame.PrevPageButton = prevBtn
+    pagingFrame.NextPageButton = nextBtn
+
+    local origUpdate = pagingFrame.Update
+    pagingFrame.Update = function(self)
+        if origUpdate then origUpdate(self) end
+        self.PageText:SetText(self.currentPage .. " / " .. self.maxPages)
+        self.PrevPageButton:SetEnabled(self.currentPage > 1)
+        self.NextPageButton:SetEnabled(self.currentPage < self.maxPages)
+    end
+
+    frame.PagingFrame = pagingFrame
+
+    -- OnPageChanged triggers model refresh
+    frame.OnPageChanged = function() UpdateMountModels() end
+
+    -- Create model grid
+    frame.Models = {}
+    local gridWidth = MOUNT_NUM_COLS * MOUNT_MODEL_WIDTH + (MOUNT_NUM_COLS - 1) * MOUNT_COL_GAP
+    local gridHeight = MOUNT_NUM_ROWS * MOUNT_MODEL_HEIGHT + (MOUNT_NUM_ROWS - 1) * MOUNT_ROW_GAP
+    local panelHeight = parent:GetHeight() or 860
+    local topReserved = 135  -- title + divider + search
+    local bottomReserved = 40  -- paging
+    local availableHeight = panelHeight - topReserved - bottomReserved
+    local gridOffsetY = -topReserved - max(0, (availableHeight - gridHeight) / 2)
+    local gridOffsetX = max(0, ((parent:GetWidth() or 644) - gridWidth) / 2)
+
+    for row = 0, MOUNT_NUM_ROWS - 1 do
+        for col = 0, MOUNT_NUM_COLS - 1 do
+            local idx = row * MOUNT_NUM_COLS + col + 1
+            local model = CreateFrame("DressUpModel", nil, frame, "MCUDR_WardrobeModelTemplate")
+            model:SetPoint("TOPLEFT", frame, "TOPLEFT",
+                gridOffsetX + col * (MOUNT_MODEL_WIDTH + MOUNT_COL_GAP),
+                gridOffsetY - row * (MOUNT_MODEL_HEIGHT + MOUNT_ROW_GAP))
+            model:Hide()
+
+            -- Override click to preview mount
+            model:SetScript("OnMouseDown", function(self, button)
+                if button == "LeftButton" and self.mountData then
+                    currentPreviewMountID = self.mountData.mountID
+                    PreviewMount(self.mountData.mountID)
+                end
+            end)
+
+            -- Override tooltip
+            model:SetScript("OnEnter", function(self)
+                if not self.mountData then return end
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(self.mountData.name or "", 1, 0.82, 0)
+                if self.mountData.description and self.mountData.description ~= "" then
+                    GameTooltip:AddLine(self.mountData.description, 1, 1, 1, true)
+                end
+                if self.mountData.source and self.mountData.source ~= "" then
+                    GameTooltip:AddLine(" ")
+                    GameTooltip:AddLine(self.mountData.source, NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b, true)
+                end
+                if not self.mountData.isCollected then
+                    GameTooltip:AddLine(" ")
+                    GameTooltip:AddLine(NOT_COLLECTED or "Not Collected", RED_FONT_COLOR.r, RED_FONT_COLOR.g, RED_FONT_COLOR.b)
+                end
+                GameTooltip:Show()
+            end)
+            model:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+            frame.Models[idx] = model
+        end
+    end
+
+    -- Events
+    frame:RegisterEvent("MOUNT_JOURNAL_SEARCH_UPDATED")
+    frame:RegisterEvent("COMPANION_LEARNED")
+    frame:RegisterEvent("COMPANION_UNLEARNED")
+    frame:SetScript("OnEvent", function() RefreshMountCollection() end)
+
+    -- Mouse wheel paging
+    frame:EnableMouseWheel(true)
+    frame:SetScript("OnMouseWheel", function(_, delta)
+        if delta > 0 then pagingFrame:PreviousPage() else pagingFrame:NextPage() end
+    end)
+
+    mountCollectionFrame = frame
+    return frame
+end
+
+function ns:ShowMountCollection(mountID)
+    if not mountCollectionFrame then
+        CreateMountCollectionFrame()
+    end
+    currentPreviewMountID = mountID
+
+    -- Reset mount journal filters to show all mounts
+    C_MountJournal.SetDefaultFilters()
+    C_MountJournal.SetSearch("")
+    if mountSearchBox then mountSearchBox:SetText("") end
+
+    -- Hide the normal appearances grid
+    if MCUDR_AppearancesFrame then
+        MCUDR_AppearancesFrame:Hide()
+    end
+
+    mountCollectionFrame:Show()
+    RefreshMountCollection()
+    NavigateToMount(mountID)
+end
+
+function ns:HideMountCollection()
+    if mountCollectionFrame then
+        mountCollectionFrame:Hide()
+        if mountSearchBox then
+            mountSearchBox:SetText("")
+            C_MountJournal.SetSearch("")
+        end
+    end
+    currentPreviewMountID = nil
+
+    -- Restore the normal appearances grid
+    if MCUDR_AppearancesFrame and MCUDressingRoomFrame and MCUDressingRoomFrame:IsShown() then
+        MCUDR_AppearancesFrame:Show()
+    end
 end
 
 local function RefreshSlotsAfterTryOn()

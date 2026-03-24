@@ -249,9 +249,23 @@ function MCUDR_FrameMixin:OnShow()
 				actor:SetModelByUnit("player", false, true, false,
 					PlayerUtil.ShouldUseNativeFormInModelScene and PlayerUtil.ShouldUseNativeFormInModelScene());
 			end
-			-- Restore equipment slots hidden during mount preview
+			-- Restore equipment slots and hide mount name
 			if preview.drSlotFrames then
 				preview:SetupSlots();
+			end
+			if preview.MountNameLabel then
+				preview.MountNameLabel:Hide();
+			end
+			-- Restore camera controls to default position
+			local controlFrame = preview.ModelScene and preview.ModelScene.ControlFrame;
+			if controlFrame then
+				controlFrame:ClearAllPoints();
+				controlFrame:SetPoint("TOP", 0, -18);
+			end
+			-- Hide mount collection and restore appearances
+			local addonNS = MCUDressingRoomFrame._addonNS;
+			if addonNS and addonNS.HideMountCollection then
+				addonNS:HideMountCollection();
 			end
 			MCUDR_PreviewedSlots = {};
 			-- Deselect any saved appearance in the outfit list
@@ -305,6 +319,32 @@ function MCUDR_FrameMixin:OnShow()
 			end
 		end);
 
+		-- Mounts: switch to mount preview mode
+		local mountsBtn = CreateFrame("Button", nil, btnBar, "UIPanelButtonTemplate");
+		mountsBtn:SetSize(btnW, btnH);
+		mountsBtn:SetPoint("LEFT", linkBtn, "RIGHT", 8, 0);
+		mountsBtn:SetText("Mounts");
+		mountsBtn:SetScript("OnClick", function()
+			local addonNS = MCUDressingRoomFrame._addonNS;
+			if addonNS and addonNS.PreviewMount then
+				-- Pick a default mount to preview (first collected, or first in list)
+				local defaultMountID
+				for i = 1, C_MountJournal.GetNumDisplayedMounts() do
+					local _, _, _, _, _, _, _, _, _, _, isCollected, mountID = C_MountJournal.GetDisplayedMountInfo(i)
+					if isCollected then
+						defaultMountID = mountID
+						break
+					end
+				end
+				if not defaultMountID then
+					defaultMountID = C_MountJournal.GetDisplayedMountID(1)
+				end
+				if defaultMountID then
+					addonNS:PreviewMount(defaultMountID)
+				end
+			end
+		end);
+
 		-- Close
 		local closeBtn = CreateFrame("Button", nil, btnBar, "UIPanelButtonTemplate");
 		closeBtn:SetSize(btnW, btnH);
@@ -335,6 +375,33 @@ function MCUDR_FrameMixin:OnHide()
 
 	-- Reset dressing room state
 	MCUDR_PreviewedSlots = {};
+
+	-- Clean up mount preview if active
+	if self.CharacterPreview and self.CharacterPreview.ModelScene then
+		local ms = self.CharacterPreview.ModelScene;
+		if ms._mountActor then
+			ms._mountActor:ClearModel();
+			ms._mountActor = nil;
+		end
+		ms:TransitionToModelSceneID(290, CAMERA_TRANSITION_TYPE_IMMEDIATE, CAMERA_MODIFICATION_TYPE_DISCARD, true);
+	end
+	if self.CharacterPreview then
+		if self.CharacterPreview.MountNameLabel then
+			self.CharacterPreview.MountNameLabel:Hide();
+		end
+		-- Restore camera controls to default position
+		local controlFrame = self.CharacterPreview.ModelScene and self.CharacterPreview.ModelScene.ControlFrame;
+		if controlFrame then
+			controlFrame:ClearAllPoints();
+			controlFrame:SetPoint("TOP", 0, -18);
+		end
+	end
+
+	-- Hide mount collection and restore appearances
+	local addonNS = self._addonNS;
+	if addonNS and addonNS.HideMountCollection then
+		addonNS:HideMountCollection();
+	end
 
 	-- Reset the model back to equipped gear
 	if self.CharacterPreview and self.CharacterPreview.ModelScene then
