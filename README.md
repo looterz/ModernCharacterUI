@@ -26,7 +26,7 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Save and load custom outfit sets
 - Click any item slot being previewed to view it in your collection instantly
 
-![Dressing Room](https://media.forgecdn.net/attachments/1595/667/wowscrnshot_032326_135559-jpg.jpg)
+![Dressing Room](https://media.forgecdn.net/attachments/1596/79/wowscrnshot_032326_213949-jpg.jpg)
 
 ### Inspect Window
 - Same design as the character panel with 3D model and 18 equipment slots
