@@ -173,6 +173,29 @@ function MCUDR_FrameMixin:OnShow()
 		self.OutfitCollection.AppearancesTitle:SetText(WARDROBE_OUTFITS or "Saved Appearances");
 	end
 
+	-- Set right sidebar title (push tabs down to match left sidebar layout)
+	if self.WardrobeCollection then
+		if not self.WardrobeCollection.CollectionTitle then
+			local title = self.WardrobeCollection:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge");
+			title:SetPoint("TOP", 0, -62);
+			title:SetSize(644, 20);
+			title:SetJustifyH("CENTER");
+			title:SetTextColor(1, 0.82, 0, 1);
+			self.WardrobeCollection.CollectionTitle = title;
+
+			local divider = self.WardrobeCollection:CreateTexture(nil, "OVERLAY");
+			divider:SetAtlas("transmog-outfit-dividerline", true);
+			divider:SetPoint("TOP", self.WardrobeCollection, "TOP", 0, -102);
+
+			-- Shift tab headers and content down to make room for the title
+			self.WardrobeCollection.TabHeaders:ClearAllPoints();
+			self.WardrobeCollection.TabHeaders:SetPoint("TOPLEFT", 32, -84);
+			self.WardrobeCollection.TabContent:ClearAllPoints();
+			self.WardrobeCollection.TabContent:SetPoint("TOPLEFT", 0, -107);
+		end
+		self.WardrobeCollection.CollectionTitle:SetText("Collection");
+	end
+
 	-- Hide transmog-specific elements not needed for dressing room
 	if self.OutfitCollection then
 		if self.OutfitCollection.ShowEquippedGearSpellFrame then
