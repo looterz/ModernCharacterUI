@@ -272,6 +272,22 @@ local function CreateInspectSlot(parent, slotInfo, index, anchorPoint, xOff, yOf
     ilvlText:SetTextColor(1, 0.82, 0, 1)
     btn.ilvlText = ilvlText
 
+    -- Enchant status indicator (top-left corner, shown when enchanted)
+    local enchantIndicator = btn:CreateTexture(nil, "OVERLAY", nil, 3)
+    enchantIndicator:SetSize(11, 11)
+    enchantIndicator:SetPoint("TOPLEFT", 2, -2)
+    enchantIndicator:SetAtlas("Professions-Icon-Quality-Tier3-Small")
+    enchantIndicator:Hide()
+    btn.enchantIndicator = enchantIndicator
+
+    -- Upgrade track text (top-right corner)
+    local upgradeText = btn:CreateFontString(nil, "OVERLAY")
+    upgradeText:SetFont(STANDARD_TEXT_FONT, 9, "OUTLINE")
+    upgradeText:SetPoint("TOPRIGHT", -2, -4)
+    upgradeText:SetTextColor(1, 0.82, 0, 1)
+    upgradeText:Hide()
+    btn.upgradeText = upgradeText
+
     btn.sockets = {}
     for i = 1, MAX_SOCKETS do
         local gem = btn:CreateTexture(nil, "OVERLAY", nil, 2)
@@ -803,6 +819,40 @@ local function UpdateSlot(btn, unit)
                     btn.sockets[socketIdx]:SetTexture(458977)
                     btn.sockets[socketIdx]:Show()
                     socketIdx = socketIdx + 1
+                end
+            end
+        end
+    end
+
+    -- Enchant status overlay
+    btn.enchantIndicator:Hide()
+    if ns.db and ns.db.global and ns.db.global.showEnchantStatus and link then
+        local enchantID = link:match("item:%d+:(%d+)")
+        if enchantID and tonumber(enchantID) > 0 then
+            btn.enchantIndicator:Show()
+        end
+    end
+
+    -- Upgrade track overlay
+    btn.upgradeText:Hide()
+    if ns.db and ns.db.global and ns.db.global.showUpgradeTrack and link then
+        if C_TooltipInfo and C_TooltipInfo.GetInventoryItem then
+            local data = C_TooltipInfo.GetInventoryItem(unit, slotID)
+            if data and data.lines then
+                for _, line in ipairs(data.lines) do
+                    if line.leftText then
+                        local current, maximum = line.leftText:match("(%d+)/(%d+)")
+                        if current and maximum and line.leftText:lower():find("upgrade") then
+                            btn.upgradeText:SetText(current .. "/" .. maximum)
+                            if tonumber(current) >= tonumber(maximum) then
+                                btn.upgradeText:SetTextColor(0.0, 1.0, 0.0, 1)
+                            else
+                                btn.upgradeText:SetTextColor(1, 0.82, 0, 1)
+                            end
+                            btn.upgradeText:Show()
+                            break
+                        end
+                    end
                 end
             end
         end

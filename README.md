@@ -23,7 +23,7 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 ### Dressing Room
 - Full Transmog-style 3-panel layout with outfit list, character preview, and built-in appearances browser
 - 5x6 model grid with search, source filters, and paging
-- All weapon types shown in a single merged list per weapon slot
+- Weapon category dropdown and class filter to browse appearances for any class
 - Click any appearance to preview it instantly; previewed items are highlighted with page navigation
 - Click equipment slots to browse appearances, right-click to undress
 - Save and load custom outfit sets
@@ -47,7 +47,10 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 
 ### Quality of Life
 - Combat lockout option to prevent Character window from opening mid-fight
+- Optional enchant status and upgrade track overlays on equipment slots
+- Configurable window scaling (50-200%) for Character Panel, Inspect, and Dressing Room
 - Preview any item in the dressing room and then click the item slot to view it in your collection
+- Inspect another class and browse their collection in the dressing room with automatic class filtering
 - Search & Filter support for the Reputation and Currency tabs to quickly find what you need
 - Preview mounts in the dressing room with a dedicated mount browser, search, and paging across all mounts in the game
 - All windows remember their position between sessions
@@ -59,17 +62,24 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 
 ## Configuration
 
-`/mcu config` or Interface > AddOns > Modern Character UI.
+`/mcu` or Interface > AddOns > Modern Character UI.
 
 - **Override Legacy Character Panel**: On
 - **Override Legacy Dressing Room**: On
 - **Override Legacy Inspect Window**: On
 - **Block Opening in Combat**: On
+- **Show Enchant Status**: Off — displays an indicator on enchanted equipment slots
+- **Show Upgrade Track**: Off — displays upgrade progress (e.g. 2/6) on equipment slots
+- **Character Panel Scale**: 50-200% (default 100%)
+- **Inspect Window Scale**: 50-200% (default 100%)
+- **Dressing Room Scale**: 50-200% (default 100%)
 
 ## Commands
 
-- **`/mcu`**: Toggle character panel
-- **`/mcu config`**: Open settings
+- **`/mcu`**: Open settings
+- **`/mcu character`**: Toggle character panel
+- **`/mcu dress`**: Toggle dressing room
+- **`/mcu mounts`**: Open mount preview
 
 ## Feedback and Support
 

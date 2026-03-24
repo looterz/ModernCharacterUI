@@ -43,11 +43,36 @@ function MCU:OnEnable()
 end
 
 function MCU:ChatCommand(input)
-    input = strtrim(input or "")
-    if input == "settings" or input == "config" then
-        LibStub("AceConfigDialog-3.0"):Open(addonName)
-    else
+    input = strlower(strtrim(input or ""))
+    if input == "character" or input == "char" then
         ns:TogglePanel()
+    elseif input == "dress" or input == "dressup" then
+        if MCUDressingRoomFrame then
+            if MCUDressingRoomFrame:IsShown() then
+                MCUDressingRoomFrame:Hide()
+            else
+                MCUDressingRoomFrame:Show()
+            end
+        end
+    elseif input == "mounts" or input == "mount" then
+        if ns.PreviewMount then
+            local defaultMountID
+            for i = 1, C_MountJournal.GetNumDisplayedMounts() do
+                local _, _, _, _, _, _, _, _, _, _, isCollected, mountID = C_MountJournal.GetDisplayedMountInfo(i)
+                if isCollected then
+                    defaultMountID = mountID
+                    break
+                end
+            end
+            if not defaultMountID then
+                defaultMountID = C_MountJournal.GetDisplayedMountID(1)
+            end
+            if defaultMountID then
+                ns:PreviewMount(defaultMountID)
+            end
+        end
+    else
+        LibStub("AceConfigDialog-3.0"):Open(addonName)
     end
 end
 
