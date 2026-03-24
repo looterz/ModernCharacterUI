@@ -25,6 +25,8 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Click equipment slots to browse appearances, right-click to undress
 - Save and load custom outfit sets
 - Click any item slot being previewed to view it in your collection instantly
+- Mount preview mode with 3D model browser, search, and paging across all mounts in the game
+- Ctrl+click any mount link or click the Mounts button to browse and preview mounts
 
 ![Dressing Room](https://media.forgecdn.net/attachments/1596/79/wowscrnshot_032326_213949-jpg.jpg)
 
