@@ -4,14 +4,15 @@ local container = ns.statsContainer
 
 local scrollFrame = CreateFrame("ScrollFrame", nil, container, "UIPanelScrollFrameTemplate")
 scrollFrame:SetPoint("TOPLEFT", 0, 0)
-scrollFrame:SetPoint("BOTTOMRIGHT", -22, 0)
+scrollFrame:SetPoint("BOTTOMRIGHT", 0, 0)
+scrollFrame.ScrollBar:Hide()
 
 local content = CreateFrame("Frame", nil, scrollFrame)
 content:SetWidth(scrollFrame:GetWidth() or 270)
 scrollFrame:SetScrollChild(content)
 
 container:SetScript("OnSizeChanged", function(self)
-    local w = self:GetWidth() - 24
+    local w = self:GetWidth()
     content:SetWidth(w > 0 and w or 270)
 end)
 
@@ -128,8 +129,14 @@ ilvlFrame:SetPoint("TOPRIGHT", content, "TOPRIGHT", -4, ilvlFrameY)
 ilvlFrame:EnableMouse(true)
 
 local ilvlValue = ilvlFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge2")
-ilvlValue:SetPoint("CENTER")
+ilvlValue:SetPoint("CENTER", 0, 4)
 ilvlValue:SetTextColor(1, 0.82, 0, 1)
+
+local ilvlPvPLabel = ilvlFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+ilvlPvPLabel:SetPoint("TOP", ilvlValue, "BOTTOM", 0, -1)
+ilvlPvPLabel:SetText("PvP")
+ilvlPvPLabel:SetTextColor(0.0, 1.0, 0.0, 1)
+ilvlPvPLabel:Hide()
 
 ilvlFrame:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -314,56 +321,343 @@ CreateSectionHeader(STAT_CATEGORY_GENERAL or "General")
 
 local statLines = {}
 
-statLines.health = CreateStatLine(HEALTH or "Health",
-    "Your maximum health pool.")
-statLines.power = CreateStatLine(MANA or "Power",
-    "Your primary resource.")
-statLines.movespeed = CreateStatLine(STAT_MOVEMENT_SPEED or "Movement Speed",
-    "Your current movement speed as a percentage of base run speed.")
+statLines.health = CreateStatLine(HEALTH or "Health", nil)
+statLines.power = CreateStatLine(MANA or "Power", nil)
+statLines.movespeed = CreateStatLine(STAT_MOVEMENT_SPEED or "Movement Speed", nil)
+statLines.movespeed.frame:EnableMouse(true)
+statLines.movespeed.frame:SetScript("OnEnter", function(self)
+    local _, runSpeed, flightSpeed, swimSpeed = GetUnitSpeed("player")
+    local base = 7
+    local runPct = (runSpeed / base) * 100
+    local flyPct = (flightSpeed / base) * 100
+    local swimPct = (swimSpeed / base) * 100
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(STAT_MOVEMENT_SPEED or "Movement Speed", 1, 0.82, 0)
+    GameTooltip:AddLine(format("Run Speed: %.0f%%", runPct), 1, 1, 1)
+    GameTooltip:AddLine(format("Flight Speed: %.0f%%", flyPct), 1, 1, 1)
+    GameTooltip:AddLine(format("Swim Speed: %.0f%%", swimPct), 1, 1, 1)
+    GameTooltip:Show()
+end)
+statLines.movespeed.frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+function ns:UpdateMovementSpeed()
+    local currentSpeed, runSpeed, flightSpeed, swimSpeed = GetUnitSpeed("player")
+    local baseSpeed = 7
+    -- Use actual speed when moving (accounts for swimming/flying context),
+    -- fall back to run speed when standing still
+    local speed = currentSpeed > 0 and currentSpeed or runSpeed
+    local speedPct = (speed / baseSpeed) * 100
+    statLines.movespeed.value:SetText(format("%.0f%%", speedPct))
+    statLines.movespeed.label:SetTextColor(0.9, 0.9, 0.9, 1)
+    statLines.movespeed.value:SetTextColor(0.9, 0.9, 0.9, 1)
+end
+
+-- Poll movement speed every second while the character panel is open
+local speedElapsed = 0
+container:HookScript("OnUpdate", function(self, elapsed)
+    speedElapsed = speedElapsed + elapsed
+    if speedElapsed >= 1 then
+        speedElapsed = 0
+        ns:UpdateMovementSpeed()
+    end
+end)
 
 CreateSectionHeader(STAT_CATEGORY_ATTRIBUTES or "Attributes")
 
-statLines.strength  = CreateStatLine(SPELL_STAT1_NAME  or "Strength",
-    "Increases attack power for Strength-based classes.")
-statLines.agility   = CreateStatLine(SPELL_STAT2_NAME  or "Agility",
-    "Increases attack power for Agility-based classes.")
-statLines.intellect = CreateStatLine(SPELL_STAT4_NAME  or "Intellect",
-    "Increases spell power and mana pool.")
-statLines.stamina   = CreateStatLine(SPELL_STAT3_NAME  or "Stamina",
-    "Increases maximum health.")
-statLines.armor     = CreateStatLine(ARMOR              or "Armor",
-    "Reduces physical damage taken.")
+statLines.strength  = CreateStatLine(SPELL_STAT1_NAME  or "Strength", nil)
+statLines.agility   = CreateStatLine(SPELL_STAT2_NAME  or "Agility", nil)
+statLines.intellect = CreateStatLine(SPELL_STAT4_NAME  or "Intellect", nil)
+statLines.stamina   = CreateStatLine(SPELL_STAT3_NAME  or "Stamina", nil)
+statLines.armor     = CreateStatLine(ARMOR              or "Armor", nil)
 
 CreateSectionHeader(STAT_CATEGORY_ENHANCEMENTS or "Enhancements")
 
-statLines.crit = CreateStatLine(STAT_CRITICAL_STRIKE or "Critical Strike",
-    "Chance for attacks and healing to be significantly more effective.")
-statLines.haste = CreateStatLine(STAT_HASTE or "Haste",
-    "Increases attack speed, casting speed, and some resource regeneration.")
-statLines.mastery = CreateStatLine(STAT_MASTERY or "Mastery",
-    "Enhances your specialization's unique bonus.")
-statLines.versatility = CreateStatLine(STAT_VERSATILITY or "Versatility",
-    "Increases damage and healing done, and decreases damage taken.")
+statLines.crit = CreateStatLine(STAT_CRITICAL_STRIKE or "Critical Strike", nil)
+statLines.haste = CreateStatLine(STAT_HASTE or "Haste", nil)
+statLines.mastery = CreateStatLine(STAT_MASTERY or "Mastery", nil)
+statLines.versatility = CreateStatLine(STAT_VERSATILITY or "Versatility", nil)
 
 CreateSectionHeader("Tertiary")
 
-statLines.lifesteal = CreateStatLine(STAT_LIFESTEAL or "Lifesteal",
-    "Percentage of damage dealt that heals you.")
-statLines.avoidance = CreateStatLine(STAT_AVOIDANCE or "Avoidance",
-    "Reduces AoE damage taken.")
-statLines.speed = CreateStatLine(STAT_SPEED or "Speed",
-    "Increases movement speed.")
+statLines.lifesteal = CreateStatLine(STAT_LIFESTEAL or "Lifesteal", nil)
+statLines.avoidance = CreateStatLine(STAT_AVOIDANCE or "Avoidance", nil)
+statLines.speed = CreateStatLine(STAT_SPEED or "Speed", nil)
 
 CreateSectionHeader(STAT_CATEGORY_DEFENSE or "Defense")
 
-statLines.dodge = CreateStatLine(STAT_DODGE or "Dodge",
-    "Chance to dodge incoming melee attacks.")
-statLines.parry = CreateStatLine(STAT_PARRY or "Parry",
-    "Chance to parry incoming melee attacks.")
-statLines.block = CreateStatLine(STAT_BLOCK or "Block",
-    "Chance to block incoming attacks with a shield.")
+statLines.dodge = CreateStatLine(STAT_DODGE or "Dodge", nil)
+statLines.parry = CreateStatLine(STAT_PARRY or "Parry", nil)
+statLines.block = CreateStatLine(STAT_BLOCK or "Block", nil)
 
 content:SetHeight(math.abs(yOffset) + 10)
+
+---------------------------------------------------------------------------
+-- Dynamic stat tooltips (matching Blizzard's character panel detail level)
+---------------------------------------------------------------------------
+local function SetDynamicTooltip(statLine, onEnterFunc)
+    statLine.frame:EnableMouse(true)
+    statLine.frame:SetScript("OnEnter", onEnterFunc)
+    statLine.frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+end
+
+local function AddRatingLine(rating, bonus, template)
+    if template then
+        GameTooltip:AddLine(format(template, BreakUpLargeNumbers(rating), bonus),
+            NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b, true)
+    end
+end
+
+-- Health
+SetDynamicTooltip(statLines.health, function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %s", HEALTH or "Health", BreakUpLargeNumbers(UnitHealthMax("player"))), 1, 0.82, 0)
+    GameTooltip:AddLine(STAT_HEALTH_TOOLTIP or "Your maximum health pool.", NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b, true)
+    GameTooltip:Show()
+end)
+
+-- Power
+SetDynamicTooltip(statLines.power, function(self)
+    local powerType, powerToken = UnitPowerType("player")
+    local maxPower = UnitPowerMax("player")
+    local powerName = _G[powerToken] or MANA or "Power"
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %s", powerName, BreakUpLargeNumbers(maxPower)), 1, 0.82, 0)
+    local tooltipKey = "STAT_" .. powerToken .. "_TOOLTIP"
+    local tooltipText = _G[tooltipKey] or "Your primary resource."
+    GameTooltip:AddLine(tooltipText, NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b, true)
+    GameTooltip:Show()
+end)
+
+-- Strength
+SetDynamicTooltip(statLines.strength, function(self)
+    local base, effectiveStat, posBuff, negBuff = UnitStat("player", 1)
+    local attackPower = effectiveStat
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %s", SPELL_STAT1_NAME, BreakUpLargeNumbers(effectiveStat)), 1, 0.82, 0)
+    GameTooltip:AddLine(format("Attack Power: %s", BreakUpLargeNumbers(attackPower)), 1, 1, 1, true)
+    if posBuff > 0 or negBuff < 0 then
+        local buffs = ""
+        if posBuff > 0 then buffs = GREEN_FONT_COLOR_CODE .. "+" .. BreakUpLargeNumbers(posBuff) .. FONT_COLOR_CODE_CLOSE end
+        if negBuff < 0 then buffs = buffs .. " " .. RED_FONT_COLOR_CODE .. BreakUpLargeNumbers(negBuff) .. FONT_COLOR_CODE_CLOSE end
+        GameTooltip:AddLine(format("Base: %s %s", BreakUpLargeNumbers(base), buffs), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+    end
+    GameTooltip:Show()
+end)
+
+-- Agility
+SetDynamicTooltip(statLines.agility, function(self)
+    local base, effectiveStat, posBuff, negBuff = UnitStat("player", 2)
+    local attackPower = effectiveStat
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %s", SPELL_STAT2_NAME, BreakUpLargeNumbers(effectiveStat)), 1, 0.82, 0)
+    GameTooltip:AddLine(format("Attack Power: %s", BreakUpLargeNumbers(attackPower)), 1, 1, 1, true)
+    if posBuff > 0 or negBuff < 0 then
+        local buffs = ""
+        if posBuff > 0 then buffs = GREEN_FONT_COLOR_CODE .. "+" .. BreakUpLargeNumbers(posBuff) .. FONT_COLOR_CODE_CLOSE end
+        if negBuff < 0 then buffs = buffs .. " " .. RED_FONT_COLOR_CODE .. BreakUpLargeNumbers(negBuff) .. FONT_COLOR_CODE_CLOSE end
+        GameTooltip:AddLine(format("Base: %s %s", BreakUpLargeNumbers(base), buffs), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+    end
+    GameTooltip:Show()
+end)
+
+-- Intellect
+SetDynamicTooltip(statLines.intellect, function(self)
+    local base, effectiveStat, posBuff, negBuff = UnitStat("player", 4)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %s", SPELL_STAT4_NAME, BreakUpLargeNumbers(effectiveStat)), 1, 0.82, 0)
+    GameTooltip:AddLine(format("Spell Power: %s", BreakUpLargeNumbers(effectiveStat)), 1, 1, 1, true)
+    if posBuff > 0 or negBuff < 0 then
+        local buffs = ""
+        if posBuff > 0 then buffs = GREEN_FONT_COLOR_CODE .. "+" .. BreakUpLargeNumbers(posBuff) .. FONT_COLOR_CODE_CLOSE end
+        if negBuff < 0 then buffs = buffs .. " " .. RED_FONT_COLOR_CODE .. BreakUpLargeNumbers(negBuff) .. FONT_COLOR_CODE_CLOSE end
+        GameTooltip:AddLine(format("Base: %s %s", BreakUpLargeNumbers(base), buffs), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+    end
+    GameTooltip:Show()
+end)
+
+-- Stamina
+SetDynamicTooltip(statLines.stamina, function(self)
+    local base, effectiveStat, posBuff, negBuff = UnitStat("player", 3)
+    local healthFromStam = effectiveStat * (UnitHPPerStamina and UnitHPPerStamina("player") or 20)
+    if GetUnitMaxHealthModifier then healthFromStam = healthFromStam * GetUnitMaxHealthModifier("player") end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %s", SPELL_STAT3_NAME, BreakUpLargeNumbers(effectiveStat)), 1, 0.82, 0)
+    GameTooltip:AddLine(format("Health from Stamina: %s", BreakUpLargeNumbers(healthFromStam)), 1, 1, 1, true)
+    if posBuff > 0 or negBuff < 0 then
+        local buffs = ""
+        if posBuff > 0 then buffs = GREEN_FONT_COLOR_CODE .. "+" .. BreakUpLargeNumbers(posBuff) .. FONT_COLOR_CODE_CLOSE end
+        if negBuff < 0 then buffs = buffs .. " " .. RED_FONT_COLOR_CODE .. BreakUpLargeNumbers(negBuff) .. FONT_COLOR_CODE_CLOSE end
+        GameTooltip:AddLine(format("Base: %s %s", BreakUpLargeNumbers(base), buffs), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+    end
+    GameTooltip:Show()
+end)
+
+-- Armor
+SetDynamicTooltip(statLines.armor, function(self)
+    local _, effectiveArmor = UnitArmor("player")
+    local armorReduction = PaperDollFrame_GetArmorReduction(effectiveArmor, UnitEffectiveLevel("player"))
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %s", ARMOR, BreakUpLargeNumbers(effectiveArmor)), 1, 0.82, 0)
+    GameTooltip:AddLine(format(STAT_ARMOR_TOOLTIP or "Reduces physical damage taken from level %d enemies by %s%%.",
+        UnitEffectiveLevel("player"), format("%.2f", armorReduction)), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b, true)
+    if PaperDollFrame_GetArmorReductionAgainstTarget then
+        local armorVsTarget = PaperDollFrame_GetArmorReductionAgainstTarget(effectiveArmor)
+        if armorVsTarget then
+            GameTooltip:AddLine(format(STAT_ARMOR_TARGET_TOOLTIP or "Reduces physical damage from your target by %s%%.",
+                format("%.2f", armorVsTarget)), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b, true)
+        end
+    end
+    GameTooltip:Show()
+end)
+
+-- Critical Strike
+SetDynamicTooltip(statLines.crit, function(self)
+    local critRating = GetCombatRating(CR_CRIT_SPELL)
+    local critBonus = GetCombatRatingBonus(CR_CRIT_SPELL)
+    local critChance = max(GetSpellCritChance(), GetRangedCritChance(), GetCritChance())
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %.2f%%", STAT_CRITICAL_STRIKE, critChance), 1, 0.82, 0)
+    GameTooltip:AddLine("Chance for attacks and healing to be significantly more effective.", 1, 1, 1, true)
+    GameTooltip:AddLine(format("Rating: %s (+%.2f%%)", BreakUpLargeNumbers(critRating), critBonus),
+        NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+    GameTooltip:Show()
+end)
+
+-- Haste
+SetDynamicTooltip(statLines.haste, function(self)
+    local hasteRating = GetCombatRating(CR_HASTE_SPELL)
+    local hasteBonus = GetCombatRatingBonus(CR_HASTE_SPELL)
+    local hastePercent = UnitSpellHaste and UnitSpellHaste("player") or GetHaste()
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %.2f%%", STAT_HASTE, hastePercent), 1, 0.82, 0)
+    GameTooltip:AddLine("Increases attack speed, casting speed, and some resource regeneration.", 1, 1, 1, true)
+    GameTooltip:AddLine(format("Rating: %s (+%.2f%%)", BreakUpLargeNumbers(hasteRating), hasteBonus),
+        NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+    GameTooltip:Show()
+end)
+
+-- Mastery
+SetDynamicTooltip(statLines.mastery, function(self)
+    local masteryRating = GetCombatRating(CR_MASTERY)
+    local masteryBonus = GetCombatRatingBonus(CR_MASTERY)
+    local masteryEffect = GetMasteryEffect()
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %.2f%%", STAT_MASTERY, masteryEffect), 1, 0.82, 0)
+    -- Show mastery spell description if available
+    local spec = GetSpecialization()
+    if spec and C_SpecializationInfo and C_SpecializationInfo.GetSpecializationMasterySpells then
+        local masterySpells = C_SpecializationInfo.GetSpecializationMasterySpells(spec)
+        if masterySpells then
+            for _, spellID in ipairs(masterySpells) do
+                local spellName = C_Spell.GetSpellName(spellID)
+                local spellDesc = C_Spell.GetSpellDescription(spellID)
+                if spellName then
+                    GameTooltip:AddLine(spellName, 1, 1, 1)
+                end
+                if spellDesc then
+                    GameTooltip:AddLine(spellDesc, NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b, true)
+                end
+            end
+        end
+    end
+    GameTooltip:AddLine(format("Rating: %s (+%.2f%%)", BreakUpLargeNumbers(masteryRating), masteryBonus),
+        NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+    GameTooltip:Show()
+end)
+
+-- Versatility
+SetDynamicTooltip(statLines.versatility, function(self)
+    local versatility = GetCombatRating(CR_VERSATILITY_DAMAGE_DONE)
+    local damageBonus = GetCombatRatingBonus(CR_VERSATILITY_DAMAGE_DONE) + GetVersatilityBonus(CR_VERSATILITY_DAMAGE_DONE)
+    local damageTakenReduction = GetCombatRatingBonus(CR_VERSATILITY_DAMAGE_TAKEN) + GetVersatilityBonus(CR_VERSATILITY_DAMAGE_TAKEN)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %.2f%%", STAT_VERSATILITY, damageBonus), 1, 0.82, 0)
+    GameTooltip:AddLine(format("Increases damage and healing by %.2f%%", damageBonus), 1, 1, 1, true)
+    GameTooltip:AddLine(format("Reduces damage taken by %.2f%%", damageTakenReduction), 1, 1, 1, true)
+    GameTooltip:AddLine(format("Rating: %s", BreakUpLargeNumbers(versatility)),
+        NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+    GameTooltip:Show()
+end)
+
+-- Lifesteal
+SetDynamicTooltip(statLines.lifesteal, function(self)
+    local lifesteal = GetLifesteal()
+    local rating = GetCombatRating(CR_LIFESTEAL)
+    local bonus = GetCombatRatingBonus(CR_LIFESTEAL)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %.2f%%", STAT_LIFESTEAL, lifesteal), 1, 0.82, 0)
+    GameTooltip:AddLine("Percentage of damage dealt that heals you.", 1, 1, 1, true)
+    GameTooltip:AddLine(format("Rating: %s (+%.2f%%)", BreakUpLargeNumbers(rating), bonus),
+        NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+    GameTooltip:Show()
+end)
+
+-- Avoidance
+SetDynamicTooltip(statLines.avoidance, function(self)
+    local avoidance = GetAvoidance()
+    local rating = GetCombatRating(CR_AVOIDANCE)
+    local bonus = GetCombatRatingBonus(CR_AVOIDANCE)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %.2f%%", STAT_AVOIDANCE, avoidance), 1, 0.82, 0)
+    GameTooltip:AddLine("Reduces damage taken from area-of-effect attacks.", 1, 1, 1, true)
+    GameTooltip:AddLine(format("Rating: %s (+%.2f%%)", BreakUpLargeNumbers(rating), bonus),
+        NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+    GameTooltip:Show()
+end)
+
+-- Speed
+SetDynamicTooltip(statLines.speed, function(self)
+    local speedBonus = GetSpeed()
+    local rating = GetCombatRating(CR_SPEED)
+    local bonus = GetCombatRatingBonus(CR_SPEED)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %.2f%%", STAT_SPEED, speedBonus), 1, 0.82, 0)
+    GameTooltip:AddLine("Increases movement speed from gear.", 1, 1, 1, true)
+    GameTooltip:AddLine(format("Rating: %s (+%.2f%%)", BreakUpLargeNumbers(rating), bonus),
+        NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+    GameTooltip:Show()
+end)
+
+-- Dodge
+SetDynamicTooltip(statLines.dodge, function(self)
+    local dodgeChance = GetDodgeChance()
+    local rating = GetCombatRating(CR_DODGE)
+    local bonus = GetCombatRatingBonus(CR_DODGE)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %.2f%%", STAT_DODGE, dodgeChance), 1, 0.82, 0)
+    GameTooltip:AddLine("Chance to dodge incoming melee attacks.", 1, 1, 1, true)
+    GameTooltip:AddLine(format("Rating: %s (+%.2f%%)", BreakUpLargeNumbers(rating), bonus),
+        NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+    GameTooltip:Show()
+end)
+
+-- Parry
+SetDynamicTooltip(statLines.parry, function(self)
+    local parryChance = GetParryChance()
+    local rating = GetCombatRating(CR_PARRY)
+    local bonus = GetCombatRatingBonus(CR_PARRY)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %.2f%%", STAT_PARRY, parryChance), 1, 0.82, 0)
+    GameTooltip:AddLine("Chance to parry incoming melee attacks.", 1, 1, 1, true)
+    GameTooltip:AddLine(format("Rating: %s (+%.2f%%)", BreakUpLargeNumbers(rating), bonus),
+        NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+    GameTooltip:Show()
+end)
+
+-- Block
+SetDynamicTooltip(statLines.block, function(self)
+    local blockChance = GetBlockChance()
+    local shieldBlockValue = GetShieldBlock()
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(format("%s %.2f%%", STAT_BLOCK, blockChance), 1, 0.82, 0)
+    GameTooltip:AddLine("Chance to block incoming attacks with a shield.", 1, 1, 1, true)
+    if shieldBlockValue and shieldBlockValue > 0 then
+        GameTooltip:AddLine(format("Blocks %d%% of incoming damage.", shieldBlockValue),
+            NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b, true)
+    end
+    GameTooltip:Show()
+end)
+
 
 function ns:UpdateStats()
     local name = UnitPVPName("player") or UnitName("player") or ""
@@ -385,9 +679,9 @@ function ns:UpdateStats()
         specName = select(2, GetSpecializationInfo(spec)) or ""
     end
     if specName ~= "" then
-        charSubtitle:SetText(format("Level %d %s %s %s", level, specName, raceName, className))
+        charSubtitle:SetText(format("Level %d %s %s", level, specName, className))
     else
-        charSubtitle:SetText(format("Level %d %s %s", level, raceName, className))
+        charSubtitle:SetText(format("Level %d %s", level, className))
     end
 
     self:UpdateTitleDropdown()
@@ -403,21 +697,18 @@ function ns:UpdateStats()
     statLines.power.label:SetTextColor(0.9, 0.9, 0.9, 1)
     statLines.power.value:SetTextColor(0.9, 0.9, 0.9, 1)
 
-    local currentSpeed, _, _, _ = GetUnitSpeed("player")
-    local baseSpeed = 7
-    local speedPct = (currentSpeed / baseSpeed) * 100
-    statLines.movespeed.value:SetText(format("%.0f%%", speedPct))
-    statLines.movespeed.label:SetTextColor(0.9, 0.9, 0.9, 1)
-    statLines.movespeed.value:SetTextColor(0.9, 0.9, 0.9, 1)
+    ns:UpdateMovementSpeed()
 
     local avgItemLevel, avgItemLevelEquipped, avgItemLevelPvP = GetAverageItemLevel()
     if ns:IsInPvPZone() and avgItemLevelPvP and avgItemLevelPvP > 0
        and floor(avgItemLevelPvP) ~= floor(avgItemLevelEquipped or 0) then
         ilvlValue:SetText(format("%.1f", avgItemLevelPvP))
         ilvlValue:SetTextColor(0.0, 1.0, 0.0, 1)
+        ilvlPvPLabel:Show()
     else
         ilvlValue:SetText(format("%.1f", avgItemLevelEquipped or 0))
         ilvlValue:SetTextColor(1, 0.82, 0, 1)
+        ilvlPvPLabel:Hide()
     end
 
     local _, str = UnitStat("player", 1)

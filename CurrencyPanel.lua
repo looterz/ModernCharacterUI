@@ -244,8 +244,8 @@ end
 
 local scrollFrame = CreateFrame("ScrollFrame", nil, container,
                                 "UIPanelScrollFrameTemplate")
-scrollFrame:SetPoint("TOPLEFT", 8, -32)
-scrollFrame:SetPoint("BOTTOMRIGHT", -28, 8)
+scrollFrame:SetPoint("TOPLEFT", 8, -34)
+scrollFrame:SetPoint("BOTTOMRIGHT", -30, 0)
 
 local content = CreateFrame("Frame", nil, scrollFrame)
 content:SetWidth(scrollFrame:GetWidth() or 880)

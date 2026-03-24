@@ -11,11 +11,13 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Reputation tab with search, filters, color-coded standing bars, and detail panel
 - Currency tab with search, filters, backpack tracking (Shift+click), and transfer log
 
-![Character Panel](https://media.forgecdn.net/attachments/1595/671/wowscrnshot_032326_135511-jpg.jpg)
+![Character Panel](https://media.forgecdn.net/attachments/1596/780/wowscrnshot_032426_095429-jpg.jpg)
 
-![Reputation Tab](https://media.forgecdn.net/attachments/1595/670/wowscrnshot_032326_135516-jpg.jpg)
+![Character Panel PvP Mode](https://media.forgecdn.net/attachments/1596/777/wowscrnshot_032426_095701-jpg.jpg)
 
-![Currency Tab](https://media.forgecdn.net/attachments/1595/669/wowscrnshot_032326_135519-jpg.jpg)
+![Reputation Tab](https://media.forgecdn.net/attachments/1596/779/wowscrnshot_032426_095435-jpg.jpg)
+
+![Currency Tab](https://media.forgecdn.net/attachments/1596/778/wowscrnshot_032426_095442-jpg.jpg)
 
 ### Dressing Room
 - Full Transmog-style 3-panel layout with outfit list, character preview, and built-in appearances browser
