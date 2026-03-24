@@ -7,6 +7,7 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Per-slot item level, quality-colored borders, gem/socket indicators, cooldown overlays
 - Click your name to change title, specialization shown in subtitle
 - Equipment Manager tab to save, load, rename, and delete gear sets
+- PvP Item Levels show for items and your character while in PvP content
 - Reputation tab with search, filters, color-coded standing bars, and detail panel
 - Currency tab with search, filters, backpack tracking (Shift+click), and transfer log
 
