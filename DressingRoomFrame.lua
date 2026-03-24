@@ -246,6 +246,7 @@ function MCUDR_FrameMixin:OnShow()
 			end
 			local actor = preview.ModelScene and preview.ModelScene:GetPlayerActor();
 			if actor then
+				actor:Show();
 				actor:SetModelByUnit("player", false, true, false,
 					PlayerUtil.ShouldUseNativeFormInModelScene and PlayerUtil.ShouldUseNativeFormInModelScene());
 			end
@@ -279,6 +280,17 @@ function MCUDR_FrameMixin:OnShow()
 						frame.OutfitButton.SelectedPurple:SetAlpha(0);
 					end
 				end);
+			end
+			-- Clear inspected class filter and restore to player's class
+			local addonNS = MCUDressingRoomFrame._addonNS;
+			if addonNS then
+				addonNS.drPreviewClassID = nil;
+			end
+			if C_TransmogCollection.SetClassFilter then
+				local playerClassID = select(3, UnitClass("player"));
+				if playerClassID then
+					C_TransmogCollection.SetClassFilter(playerClassID);
+				end
 			end
 			C_Timer.After(0.3, function()
 				if preview.RefreshDressingRoomSlots then
@@ -376,6 +388,18 @@ function MCUDR_FrameMixin:OnHide()
 	-- Reset dressing room state
 	MCUDR_PreviewedSlots = {};
 
+	-- Clear inspected class filter and restore to player's class
+	local addonNS = self._addonNS;
+	if addonNS then
+		addonNS.drPreviewClassID = nil;
+	end
+	if C_TransmogCollection.SetClassFilter then
+		local playerClassID = select(3, UnitClass("player"));
+		if playerClassID then
+			C_TransmogCollection.SetClassFilter(playerClassID);
+		end
+	end
+
 	-- Clean up mount preview if active
 	if self.CharacterPreview and self.CharacterPreview.ModelScene then
 		local ms = self.CharacterPreview.ModelScene;
@@ -407,6 +431,7 @@ function MCUDR_FrameMixin:OnHide()
 	if self.CharacterPreview and self.CharacterPreview.ModelScene then
 		local actor = self.CharacterPreview.ModelScene:GetPlayerActor();
 		if actor then
+			actor:Show();
 			actor:SetModelByUnit("player", false, true, false,
 				PlayerUtil.ShouldUseNativeFormInModelScene and PlayerUtil.ShouldUseNativeFormInModelScene());
 		end
@@ -492,13 +517,35 @@ function MCUDR_FrameMixin:RefreshOutfits(selectActiveOutfit)
 								end
 							end
 
-							-- Refresh immediately with what we have, then again after items load
+							-- Refresh immediately with what we have, then retry
+							-- to pick up source info that wasn't cached yet
 						if self.CharacterPreview.RefreshDressingRoomSlots then
 							self.CharacterPreview:RefreshDressingRoomSlots();
 						end
+						local capturedSelf = self;
+						local capturedInfoList = infoList;
 						C_Timer.After(0.5, function()
-							if self.CharacterPreview.RefreshDressingRoomSlots then
-								self.CharacterPreview:RefreshDressingRoomSlots();
+							-- Re-populate slots with source info that may now be cached
+							for sID, sInfo in pairs(capturedInfoList) do
+								if sInfo.appearanceID and sInfo.appearanceID > 0 and not MCUDR_PreviewedSlots[sID] then
+									local si = C_TransmogCollection.GetSourceInfo(sInfo.appearanceID);
+									if si and si.name then
+										local itemIcon;
+										local itemID = si.itemID or C_TransmogCollection.GetSourceItemID(sInfo.appearanceID);
+										if itemID then
+											itemIcon = C_Item.GetItemIconByID(itemID) or select(5, C_Item.GetItemInfoInstant(itemID));
+										end
+										MCUDR_PreviewedSlots[sID] = {
+											icon = itemIcon,
+											sourceID = sInfo.appearanceID,
+											name = si.name,
+											quality = si.quality,
+										};
+									end
+								end
+							end
+							if capturedSelf.CharacterPreview and capturedSelf.CharacterPreview.RefreshDressingRoomSlots then
+								capturedSelf.CharacterPreview:RefreshDressingRoomSlots();
 							end
 						end);
 						end
@@ -1165,6 +1212,16 @@ function MCUDR_CharacterMixin:OnShow()
 						transmogLoc = MCUDR_Util.CreateTransmogLocation(btn.slotName, Enum.TransmogType.Appearance, false);
 					end
 					if transmogLoc then
+						-- Update selectedSlotData for SelectVisual
+						self.selectedSlotData = {
+							transmogLocation = transmogLoc,
+							currentWeaponOptionInfo = { weaponOption = 0 },
+						};
+						-- Apply class filter if viewing another class's gear
+						local addonNS = MCUDressingRoomFrame._addonNS;
+						if addonNS and addonNS.drPreviewClassID and C_TransmogCollection.SetClassFilter then
+							C_TransmogCollection.SetClassFilter(addonNS.drPreviewClassID);
+						end
 						MCUDR_AppearancesFrame:SetActiveSlot(transmogLoc);
 						-- Navigate to previewed item if one exists
 						local preview = MCUDR_PreviewedSlots and MCUDR_PreviewedSlots[firstSlotID];
@@ -1414,15 +1471,42 @@ function MCUDR_CharacterMixin:SetupSlots()
 
 						-- Navigate our standalone appearances grid to this slot's category
 						if MCUDR_AppearancesFrame then
-							local transmogLoc = MCUDR_Util.GetTransmogLocation(self.slotName, Enum.TransmogType.Appearance, false);
+							local isSecondary = (self.slotName == "SECONDARYHANDSLOT")
+							local transmogLoc = MCUDR_Util.GetTransmogLocation(self.slotName, Enum.TransmogType.Appearance, isSecondary);
 							if not transmogLoc then
-								transmogLoc = MCUDR_Util.CreateTransmogLocation(self.slotName, Enum.TransmogType.Appearance, false);
+								transmogLoc = MCUDR_Util.CreateTransmogLocation(self.slotName, Enum.TransmogType.Appearance, isSecondary);
 							end
 							if transmogLoc then
-								MCUDR_AppearancesFrame:SetActiveSlot(transmogLoc);
+								-- Update selectedSlotData so SelectVisual applies to the correct slot
+								if charPreview then
+									charPreview.selectedSlotData = {
+										transmogLocation = transmogLoc,
+										currentWeaponOptionInfo = { weaponOption = 0 },
+									};
+								end
+
+								-- Detect weapon category from the previewed item
+								local preview = MCUDR_PreviewedSlots and MCUDR_PreviewedSlots[self.slotID];
+								local weaponCategory = nil;
+								if preview and preview.sourceID then
+									local sourceInfo = C_TransmogCollection.GetSourceInfo(preview.sourceID);
+									if sourceInfo and sourceInfo.categoryID then
+										local _, isWeapon = C_TransmogCollection.GetCategoryInfo(sourceInfo.categoryID);
+										if isWeapon then
+											weaponCategory = sourceInfo.categoryID;
+										end
+									end
+								end
+
+								-- If viewing another class's gear, apply the class filter
+								local addonNS = MCUDressingRoomFrame._addonNS;
+								if addonNS and addonNS.drPreviewClassID and C_TransmogCollection.SetClassFilter then
+									C_TransmogCollection.SetClassFilter(addonNS.drPreviewClassID);
+								end
+
+								MCUDR_AppearancesFrame:SetActiveSlot(transmogLoc, weaponCategory);
 
 								-- If this slot has a previewed item, navigate to it and highlight it
-								local preview = MCUDR_PreviewedSlots and MCUDR_PreviewedSlots[self.slotID];
 								if preview and preview.sourceID then
 									MCUDR_AppearancesFrame:NavigateToSource(preview.sourceID, preview.name);
 								else

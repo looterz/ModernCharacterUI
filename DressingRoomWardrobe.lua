@@ -272,12 +272,10 @@ function MCUDR_AppearancesMixin:OnEvent(event, ...)
 		end
 	elseif event == "TRANSMOG_SEARCH_UPDATED" then
 		local searchType, category = ...;
-		if searchType == Enum.TransmogSearchType.Items then
-			if category == self.activeCategory then
-				self:RefreshVisualsList();
-				self:UpdateItems();
-				self:ExecutePendingNavigation();
-			end
+		if searchType == Enum.TransmogSearchType.Items and category == self.activeCategory then
+			self:RefreshVisualsList();
+			self:UpdateItems();
+			self:ExecutePendingNavigation();
 		end
 	elseif event == "UNIT_FORM_CHANGED" then
 		if self:IsVisible() then
@@ -314,30 +312,41 @@ local SLOT_ID_TO_ARMOR_CATEGORY = {
 	[8]  = 11,  -- Feet
 };
 
+function MCUDR_AppearancesMixin:IsValidWeaponCategoryForSlot(categoryID)
+	local name, isWeapon, canEnchant, canMainHand, canOffHand = C_TransmogCollection.GetCategoryInfo(categoryID);
+	if not name or not isWeapon then
+		return false;
+	end
+	if self.transmogLocation:IsMainHand() and canMainHand then
+		return true;
+	end
+	if self.transmogLocation:IsOffHand() then
+		-- Offhand only shows shields and held-in-offhand items
+		return (categoryID == Enum.TransmogCollectionType.Shield)
+			or (categoryID == Enum.TransmogCollectionType.Holdable);
+	end
+	return false;
+end
+
 function MCUDR_AppearancesMixin:SetActiveSlot(transmogLocation, category)
 	self.transmogLocation = transmogLocation;
-	self.weaponCategories = nil; -- reset weapon merge list
 
 	if not category then
 		if transmogLocation:IsAppearance() then
 			if transmogLocation:IsEitherHand() then
-				-- Collect ALL valid weapon categories so we can merge them
-				local weaponCats = {};
-				if FIRST_TRANSMOG_COLLECTION_WEAPON_TYPE and LAST_TRANSMOG_COLLECTION_WEAPON_TYPE then
-					for categoryID = FIRST_TRANSMOG_COLLECTION_WEAPON_TYPE, LAST_TRANSMOG_COLLECTION_WEAPON_TYPE do
-						local name, isWeapon, canEnchant, canMainHand, canOffHand = C_TransmogCollection.GetCategoryInfo(categoryID);
-						if name and isWeapon then
-							if (transmogLocation:IsMainHand() and canMainHand) or (transmogLocation:IsOffHand() and canOffHand) then
-								table.insert(weaponCats, categoryID);
+				-- Prefer last weapon category if valid for this slot
+				if self.lastWeaponCategory and self:IsValidWeaponCategoryForSlot(self.lastWeaponCategory) then
+					category = self.lastWeaponCategory;
+				else
+					-- Find the first valid weapon category
+					if FIRST_TRANSMOG_COLLECTION_WEAPON_TYPE and LAST_TRANSMOG_COLLECTION_WEAPON_TYPE then
+						for categoryID = FIRST_TRANSMOG_COLLECTION_WEAPON_TYPE, LAST_TRANSMOG_COLLECTION_WEAPON_TYPE do
+							if self:IsValidWeaponCategoryForSlot(categoryID) then
+								category = categoryID;
+								break;
 							end
 						end
 					end
-				end
-				if #weaponCats > 0 then
-					-- Use the first as the "active" category for API calls,
-					-- but store all for merging in RefreshVisualsList
-					category = weaponCats[1];
-					self.weaponCategories = weaponCats;
 				end
 			else
 				category = transmogLocation:GetArmorCategoryID();
@@ -351,13 +360,21 @@ function MCUDR_AppearancesMixin:SetActiveSlot(transmogLocation, category)
 	end
 
 	self:SetActiveCategory(category);
+	self:RefreshWeaponDropdown();
+	self:RefreshClassDropdown();
 end
 
 function MCUDR_AppearancesMixin:SetActiveCategory(category)
-	local previousCategory = self.activeCategory;
 	self.activeCategory = category;
 
-	if previousCategory ~= category and self.transmogLocation and self.transmogLocation:IsAppearance() then
+	if category then
+		local name, isWeapon = C_TransmogCollection.GetCategoryInfo(category);
+		if isWeapon then
+			self.lastWeaponCategory = category;
+		end
+	end
+
+	if category and self.transmogLocation and self.transmogLocation:IsAppearance() then
 		C_TransmogCollection.SetSearchAndFilterCategory(category);
 	end
 
@@ -458,28 +475,9 @@ function MCUDR_AppearancesMixin:RefreshVisualsList()
 
 	local locationData = self.transmogLocation:GetData();
 
-	-- For weapon slots: merge appearances from ALL weapon categories
-	if self.weaponCategories and #self.weaponCategories > 1 then
-		local seen = {};
-		local merged = {};
-		for _, catID in ipairs(self.weaponCategories) do
-			local appearances = C_TransmogCollection.GetCategoryAppearances(catID, locationData);
-			if appearances then
-				for _, visualInfo in ipairs(appearances) do
-					if not seen[visualInfo.visualID] then
-						seen[visualInfo.visualID] = true;
-						visualInfo._categoryID = catID;
-						table.insert(merged, visualInfo);
-					end
-				end
-			end
-		end
-		self.visualsList = merged;
-	else
-		self.visualsList = C_TransmogCollection.GetCategoryAppearances(self.activeCategory, locationData);
-		if not self.visualsList then
-			self.visualsList = {};
-		end
+	self.visualsList = C_TransmogCollection.GetCategoryAppearances(self.activeCategory, locationData);
+	if not self.visualsList then
+		self.visualsList = {};
 	end
 
 	self:FilterVisuals();
@@ -708,6 +706,92 @@ function MCUDR_AppearancesMixin:InitFilterButton()
 	end);
 end
 
+function MCUDR_AppearancesMixin:RefreshWeaponDropdown()
+	if not self.WeaponDropdown then return; end
+
+	if not self.transmogLocation or not self.transmogLocation:IsEitherHand() or not self.activeCategory then
+		self.WeaponDropdown:Hide();
+		return;
+	end
+
+	local _, isWeapon = C_TransmogCollection.GetCategoryInfo(self.activeCategory);
+	if not isWeapon then
+		self.WeaponDropdown:Hide();
+		return;
+	end
+
+	self.WeaponDropdown:Show();
+
+	local function IsSelected(categoryID)
+		return categoryID == self.activeCategory;
+	end
+
+	local function SetSelected(categoryID)
+		if categoryID ~= self.activeCategory then
+			self:SetActiveCategory(categoryID);
+			self:RefreshVisualsList();
+			self.PagingFrame:SetCurrentPage(1);
+			self:UpdateItems();
+			self:RefreshWeaponDropdown();
+		end
+	end
+
+	self.WeaponDropdown:SetupMenu(function(_dropdown, rootDescription)
+		rootDescription:SetTag("MENU_MCUDR_WEAPONS_FILTER");
+
+		for categoryID = FIRST_TRANSMOG_COLLECTION_WEAPON_TYPE, LAST_TRANSMOG_COLLECTION_WEAPON_TYPE do
+			if self:IsValidWeaponCategoryForSlot(categoryID) then
+				local name = C_TransmogCollection.GetCategoryInfo(categoryID);
+				if name then
+					rootDescription:CreateRadio(name, IsSelected, SetSelected, categoryID);
+				end
+			end
+		end
+	end);
+end
+
+function MCUDR_AppearancesMixin:RefreshClassDropdown()
+	if not self.ClassDropdown then return; end
+
+	if not C_TransmogCollection.GetClassFilter then
+		self.ClassDropdown:Hide();
+		return;
+	end
+
+	self.ClassDropdown:Show();
+
+	local function IsSelected(classID)
+		return classID == C_TransmogCollection.GetClassFilter();
+	end
+
+	local function SetSelected(classID)
+		C_TransmogCollection.SetClassFilter(classID);
+		-- Re-run SetActiveSlot to re-evaluate valid categories for the new class
+		if self.transmogLocation then
+			self.lastWeaponCategory = nil;
+			self:SetActiveSlot(self.transmogLocation);
+		else
+			self:RefreshVisualsList();
+			self.PagingFrame:SetCurrentPage(1);
+			self:UpdateItems();
+		end
+		self:RefreshClassDropdown();
+	end
+
+	self.ClassDropdown:SetupMenu(function(_dropdown, rootDescription)
+		rootDescription:SetTag("MENU_MCUDR_CLASS_FILTER");
+
+		for classID = 1, GetNumClasses() do
+			local classInfo = C_CreatureInfo.GetClassInfo(classID);
+			if classInfo then
+				local classColor = GetClassColorObj(classInfo.classFile) or HIGHLIGHT_FONT_COLOR;
+				local coloredName = classColor:WrapTextInColorCode(classInfo.className);
+				rootDescription:CreateRadio(coloredName, IsSelected, SetSelected, classID);
+			end
+		end
+	end);
+end
+
 ---------------------------------------------------------------------------
 -- MCUDR_WardrobeModelMixin
 ---------------------------------------------------------------------------
@@ -762,25 +846,64 @@ function MCUDR_WardrobeModelMixin:OnMouseDown(button)
 	parentFrame.activeVisualID = visualInfo.visualID;
 	parentFrame:UpdateItems();
 
-	-- Update MCUDR_PreviewedSlots
+	-- Update MCUDR_PreviewedSlots using the currently selected slot
+	local appliedSlotID
 	if MCUDR_PreviewedSlots then
 		local sourceInfo = C_TransmogCollection.GetSourceInfo(sourceID);
 		if sourceInfo then
-			local slotName = MCUDR_WardrobeUtil.GetSlotFromCategoryID(sourceInfo.categoryID or parentFrame.activeCategory);
-			if slotName then
-				local slotID = GetInventorySlotInfo(slotName);
-				if slotID then
-					local itemIcon = nil;
-					if sourceInfo.itemID then
-						itemIcon = C_Item.GetItemIconByID(sourceInfo.itemID);
-					end
-					MCUDR_PreviewedSlots[slotID] = {
-						icon = itemIcon,
-						sourceID = sourceID,
-						name = sourceInfo.name,
-						quality = sourceInfo.quality,
-					};
+			-- Use the slot the user actually selected, not the item's default slot
+			local charPreview = dressingRoomFrame.CharacterPreview
+			if charPreview and charPreview.selectedSlotData and charPreview.selectedSlotData.transmogLocation then
+				appliedSlotID = charPreview.selectedSlotData.transmogLocation:GetSlotID()
+			end
+			if not appliedSlotID then
+				local slotName = MCUDR_WardrobeUtil.GetSlotFromCategoryID(sourceInfo.categoryID or parentFrame.activeCategory);
+				if slotName then
+					appliedSlotID = GetInventorySlotInfo(slotName);
 				end
+			end
+			if appliedSlotID then
+				local itemIcon = nil;
+				if sourceInfo.itemID then
+					itemIcon = C_Item.GetItemIconByID(sourceInfo.itemID);
+				end
+				MCUDR_PreviewedSlots[appliedSlotID] = {
+					icon = itemIcon,
+					sourceID = sourceID,
+					name = sourceInfo.name,
+					quality = sourceInfo.quality,
+				};
+			end
+		end
+	end
+
+	local function IsTwoHandCategory(catID)
+		return catID and (
+			(catID == Enum.TransmogCollectionType.TwoHAxe)
+			or (catID == Enum.TransmogCollectionType.TwoHSword)
+			or (catID == Enum.TransmogCollectionType.TwoHMace)
+			or (catID == Enum.TransmogCollectionType.Staff)
+			or (catID == Enum.TransmogCollectionType.Polearm)
+			or (catID == Enum.TransmogCollectionType.Bow)
+			or (catID == Enum.TransmogCollectionType.Gun)
+			or (catID == Enum.TransmogCollectionType.Crossbow)
+		);
+	end
+
+	-- If a two-handed weapon was equipped to mainhand, clear the offhand preview
+	if MCUDR_PreviewedSlots and appliedSlotID == 16 then -- MAINHANDSLOT
+		if IsTwoHandCategory(parentFrame.activeCategory) then
+			MCUDR_PreviewedSlots[17] = nil; -- SECONDARYHANDSLOT
+		end
+	end
+
+	-- If an offhand item was equipped, clear mainhand if it was a two-hander
+	if MCUDR_PreviewedSlots and appliedSlotID == 17 then -- SECONDARYHANDSLOT
+		local mainPreview = MCUDR_PreviewedSlots[16];
+		if mainPreview and mainPreview.sourceID then
+			local mainSourceInfo = C_TransmogCollection.GetSourceInfo(mainPreview.sourceID);
+			if mainSourceInfo and IsTwoHandCategory(mainSourceInfo.categoryID) then
+				MCUDR_PreviewedSlots[16] = nil; -- MAINHANDSLOT
 			end
 		end
 	end

@@ -53,7 +53,7 @@ statsFillBg:SetAtlas("transmog-tabs-frame-bg")
 
 local statsBorder = frame:CreateTexture(nil, "OVERLAY", nil, -1)
 statsBorder:SetPoint("TOPLEFT", statsBg, "TOPLEFT", -11, 12)
-statsBorder:SetPoint("BOTTOMRIGHT", statsBg, "BOTTOMRIGHT", 7, -10)
+statsBorder:SetPoint("BOTTOMRIGHT", statsBg, "BOTTOMRIGHT", 12, -10)
 statsBorder:SetAtlas("transmog-tabs-frame")
 
 local leftGrad = frame:CreateTexture(nil, "BACKGROUND", nil, 2)
@@ -282,6 +282,7 @@ frame:SetScript("OnEvent", function(self, event, arg1, ...)
         if ns.UpdateSlot then ns:UpdateSlot(slotID) end
         if ns.UpdateModel then ns:UpdateModel() end
         if ns.UpdateStats then ns:UpdateStats() end
+        if ns.UpdateEquipmentSets then ns:UpdateEquipmentSets() end
     elseif event == "UNIT_MODEL_CHANGED" then
         if ns.UpdateModel then ns:UpdateModel() end
     elseif event == "UNIT_NAME_UPDATE" or event == "KNOWN_TITLES_UPDATE" then
@@ -332,7 +333,7 @@ PanelTemplates_SetTab(frame, 1)
 local function CreateFullContentFrame()
     local f = CreateFrame("Frame", nil, frame)
     f:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -21)
-    f:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -2, 2)
+    f:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 2)
     f:SetFrameLevel(frame:GetFrameLevel() + 1)
     f:Hide()
 
@@ -347,7 +348,7 @@ local function CreateFullContentFrame()
 
     local border = f:CreateTexture(nil, "OVERLAY", nil, -1)
     border:SetPoint("TOPLEFT", -11, 12)
-    border:SetPoint("BOTTOMRIGHT", 7, -10)
+    border:SetPoint("BOTTOMRIGHT", 10, -10)
     border:SetAtlas("transmog-tabs-frame")
 
     return f

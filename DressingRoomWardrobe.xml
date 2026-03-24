@@ -100,24 +100,36 @@
 	<Frame name="MCUDR_AppearancesFrame" mixin="MCUDR_AppearancesMixin" hidden="true">
 		<Size x="590" y="500"/>
 		<Frames>
-			<EditBox parentKey="SearchBox" mixin="MCUDR_AppearancesSearchBoxMixin" inherits="SearchBoxTemplate" letters="40">
-				<Size x="115" y="20"/>
+			<DropdownButton parentKey="FilterButton" inherits="WowStyle1FilterDropdownTemplate">
+				<KeyValues>
+					<KeyValue key="resizeToText" type="boolean" value="false"/>
+				</KeyValues>
 				<Anchors>
-					<Anchor point="TOP" x="90" y="-10"/>
+					<Anchor point="TOPLEFT" x="48" y="-10"/>
+				</Anchors>
+			</DropdownButton>
+			<DropdownButton parentKey="ClassDropdown" inherits="WowStyle1DropdownTemplate" hidden="true">
+				<Size x="120" y="22"/>
+				<Anchors>
+					<Anchor point="LEFT" relativeKey="$parent.FilterButton" relativePoint="RIGHT" x="5" y="0"/>
+				</Anchors>
+			</DropdownButton>
+			<DropdownButton parentKey="WeaponDropdown" inherits="WowStyle1DropdownTemplate" hidden="true">
+				<Size x="140" y="22"/>
+				<Anchors>
+					<Anchor point="LEFT" relativeKey="$parent.ClassDropdown" relativePoint="RIGHT" x="5" y="0"/>
+				</Anchors>
+			</DropdownButton>
+			<EditBox parentKey="SearchBox" mixin="MCUDR_AppearancesSearchBoxMixin" inherits="SearchBoxTemplate" letters="40">
+				<Size x="170" y="20"/>
+				<Anchors>
+					<Anchor point="TOPRIGHT" x="-9" y="-10"/>
 				</Anchors>
 				<Scripts>
 					<OnLoad method="OnLoad"/>
 					<OnTextChanged method="OnTextChanged"/>
 				</Scripts>
 			</EditBox>
-			<DropdownButton parentKey="FilterButton" inherits="WowStyle1FilterDropdownTemplate">
-				<KeyValues>
-					<KeyValue key="resizeToText" type="boolean" value="false"/>
-				</KeyValues>
-				<Anchors>
-					<Anchor point="LEFT" relativeKey="$parent.SearchBox" relativePoint="RIGHT" x="5" y="0"/>
-				</Anchors>
-			</DropdownButton>
 			<Frame parentKey="PagingFrame" mixin="MCUDR_PagingMixin">
 				<Size x="120" y="28"/>
 				<Anchors>

@@ -364,6 +364,10 @@ equipBtn:SetScript("OnClick", function()
         pendingEquipSetID = selectedSetID
         EquipmentManager_EquipSet(selectedSetID)
         ns:UpdateEquipmentSets()
+        -- Deferred refresh to pick up isEquipped flag updates
+        C_Timer.After(0.5, function()
+            if ns.UpdateEquipmentSets then ns:UpdateEquipmentSets() end
+        end)
     end
 end)
 

@@ -6,6 +6,7 @@ local scrollFrame = CreateFrame("ScrollFrame", nil, container, "UIPanelScrollFra
 scrollFrame:SetPoint("TOPLEFT", 0, 0)
 scrollFrame:SetPoint("BOTTOMRIGHT", 0, 0)
 scrollFrame.ScrollBar:Hide()
+scrollFrame.ScrollBar:SetScript("OnShow", scrollFrame.ScrollBar.Hide)
 
 local content = CreateFrame("Frame", nil, scrollFrame)
 content:SetWidth(scrollFrame:GetWidth() or 270)

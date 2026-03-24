@@ -74,6 +74,17 @@ local function PreviewMount(mountID)
     -- Show mount collection on the right sidebar
     ns:ShowMountCollection(mountID)
 
+    -- Clear the player actor immediately to prevent ghost models from
+    -- inspect outfit timers that may still be pending
+    local earlyScene = GetModelScene()
+    if earlyScene then
+        local earlyActor = earlyScene:GetPlayerActor()
+        if earlyActor then
+            earlyActor:ClearModel()
+            earlyActor:Hide()
+        end
+    end
+
     -- Switch to two-column layout: hide left sidebar, expand preview to fill
     local outfitCollection = MCUDressingRoomFrame.OutfitCollection
     local charPreview = MCUDressingRoomFrame.CharacterPreview
@@ -103,6 +114,7 @@ local function PreviewMount(mountID)
         local playerActor = modelScene:GetPlayerActor()
         if playerActor then
             playerActor:ClearModel()
+            playerActor:Hide()
         end
 
         -- Hide equipment slots and show mount name during mount preview
@@ -416,21 +428,28 @@ function ns:ShowMountCollection(mountID)
     if not mountCollectionFrame then
         CreateMountCollectionFrame()
     end
+
+    local alreadyShowing = mountCollectionFrame:IsShown()
     currentPreviewMountID = mountID
 
-    -- Reset mount journal filters to show all mounts
-    C_MountJournal.SetDefaultFilters()
-    C_MountJournal.SetSearch("")
-    if mountSearchBox then mountSearchBox:SetText("") end
+    if not alreadyShowing then
+        -- First open: reset filters to show all mounts
+        C_MountJournal.SetDefaultFilters()
+        C_MountJournal.SetSearch("")
+        if mountSearchBox then mountSearchBox:SetText("") end
 
-    -- Hide the normal appearances grid
-    if MCUDR_AppearancesFrame then
-        MCUDR_AppearancesFrame:Hide()
+        -- Hide the normal appearances grid
+        if MCUDR_AppearancesFrame then
+            MCUDR_AppearancesFrame:Hide()
+        end
+
+        mountCollectionFrame:Show()
     end
 
-    mountCollectionFrame:Show()
     RefreshMountCollection()
-    NavigateToMount(mountID)
+    if not alreadyShowing then
+        NavigateToMount(mountID)
+    end
 end
 
 function ns:HideMountCollection()

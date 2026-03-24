@@ -62,7 +62,7 @@ statsFillBg:SetAtlas("transmog-tabs-frame-bg")
 
 local statsBorder = frame:CreateTexture(nil, "OVERLAY", nil, -1)
 statsBorder:SetPoint("TOPLEFT", statsBg, "TOPLEFT", -11, 12)
-statsBorder:SetPoint("BOTTOMRIGHT", statsBg, "BOTTOMRIGHT", 7, -10)
+statsBorder:SetPoint("BOTTOMRIGHT", statsBg, "BOTTOMRIGHT", 10, -10)
 statsBorder:SetAtlas("transmog-tabs-frame")
 
 local leftGrad = frame:CreateTexture(nil, "BACKGROUND", nil, 2)
@@ -363,12 +363,20 @@ guildText:SetJustifyH("CENTER")
 guildText:SetTextColor(0.25, 0.78, 0.92)
 frame.guildText = guildText
 
+local mountText = infoContainer:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+mountText:SetPoint("TOP", guildText, "BOTTOM", 0, -4)
+mountText:SetWidth(STATS_WIDTH - 40)
+mountText:SetJustifyH("CENTER")
+mountText:SetTextColor(1, 0.82, 0, 1)
+mountText:Hide()
+frame.mountText = mountText
+
 -- Divider 1
 local divider1 = infoContainer:CreateTexture(nil, "ARTWORK")
 divider1:SetHeight(1)
 divider1:SetPoint("LEFT", infoContainer, "LEFT", 0, 0)
 divider1:SetPoint("RIGHT", infoContainer, "RIGHT", 0, 0)
-divider1:SetPoint("TOP", guildText, "BOTTOM", 0, -10)
+divider1:SetPoint("TOP", mountText, "BOTTOM", 0, -10)
 divider1:SetColorTexture(0.4, 0.4, 0.4, 0.4)
 
 -- Item Level header
@@ -395,12 +403,21 @@ dressUpBtn:SetScript("OnClick", function()
     local infoList = C_TransmogCollection.GetInspectItemTransmogInfoList()
     if not infoList then return end
 
+    -- Capture unit data before hiding (OnHide clears frame.unit)
+    local unit = frame.unit
+    local _, _, inspectClassID = UnitClass(unit)
+    frame:Hide()
+
     -- Open our dressing room directly (bypass DressUpItemTransmogInfoList which
     -- triggers ShowUIPanel on Blizzard's DressUpFrame and disturbs panel layout)
     if MCUDressingRoomFrame then
+        -- Store the inspected unit's class for collection filtering
+        if inspectClassID and ns then
+            ns.drPreviewClassID = inspectClassID
+        end
+
         MCUDressingRoomFrame:Show()
         -- Also collect item links for slots without transmog
-        local unit = frame.unit
         local itemLinks = {}
         if unit then
             local allSlots = {}
@@ -476,10 +493,25 @@ dressUpBtn:SetScript("OnClick", function()
     end
 end)
 
+-- View Mount button (only visible when inspected player is mounted)
+local viewMountBtn = CreateFrame("Button", nil, infoContainer, "UIPanelButtonTemplate")
+viewMountBtn:SetSize(STATS_WIDTH - 50, 26)
+viewMountBtn:SetPoint("TOP", dressUpBtn, "BOTTOM", 0, -4)
+viewMountBtn:SetText("View Mount")
+viewMountBtn:Hide()
+viewMountBtn:SetScript("OnClick", function()
+    if not frame.unit or not viewMountBtn.mountID then return end
+    PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+    frame:Hide()
+    if ns and ns.PreviewMount then
+        ns:PreviewMount(viewMountBtn.mountID)
+    end
+end)
+
 -- View Talents button (uses same code path as legacy inspect)
 local talentsBtn = CreateFrame("Button", nil, infoContainer, "UIPanelButtonTemplate")
 talentsBtn:SetSize(STATS_WIDTH - 50, 26)
-talentsBtn:SetPoint("TOP", dressUpBtn, "BOTTOM", 0, -4)
+talentsBtn:SetPoint("TOP", viewMountBtn, "BOTTOM", 0, -4)
 talentsBtn:SetText(TALENTS or "Talents")
 talentsBtn:SetScript("OnClick", function()
     if not frame.unit then return end
@@ -834,6 +866,30 @@ local function UpdateCharacterInfo()
         frame.guildText:Hide()
     end
 
+    -- Show mount name if the inspected player is mounted
+    local mountName = nil
+    if C_MountJournal and C_MountJournal.GetMountFromSpell and C_UnitAuras then
+        local buffIndex = 1
+        while true do
+            local aura = C_UnitAuras.GetBuffDataByIndex(unit, buffIndex)
+            if not aura then break end
+            if aura.spellId then
+                local id = C_MountJournal.GetMountFromSpell(aura.spellId)
+                if id and id > 0 then
+                    mountName = C_MountJournal.GetMountInfoByID(id)
+                    break
+                end
+            end
+            buffIndex = buffIndex + 1
+        end
+    end
+    if mountName then
+        frame.mountText:SetText(mountName)
+        frame.mountText:Show()
+    else
+        frame.mountText:Hide()
+    end
+
     local avgIlvl = C_PaperDollInfo.GetInspectItemLevel(unit)
     if avgIlvl and avgIlvl > 0 then
         frame.ilvlValue:SetText(format("%.1f", avgIlvl))
@@ -1076,6 +1132,47 @@ local function UpdateTalentsButton()
     end
 end
 
+local function UpdateMountButton()
+    if not frame.unit then
+        viewMountBtn:Hide()
+        return
+    end
+    -- Check if the inspected unit is mounted
+    local mountID = nil
+    if C_MountJournal and C_MountJournal.GetMountFromSpell then
+        local buffIndex = 1
+        while true do
+            local aura = C_UnitAuras.GetBuffDataByIndex(frame.unit, buffIndex)
+            if not aura then break end
+            local spellID = aura.spellId
+            if spellID then
+                local id = C_MountJournal.GetMountFromSpell(spellID)
+                if id and id > 0 then
+                    mountID = id
+                    break
+                end
+            end
+            buffIndex = buffIndex + 1
+        end
+    end
+    if mountID then
+        viewMountBtn.mountID = mountID
+        local mountName = C_MountJournal.GetMountInfoByID(mountID)
+        viewMountBtn:SetText("View Mount")
+        viewMountBtn:Show()
+    else
+        viewMountBtn.mountID = nil
+        viewMountBtn:Hide()
+    end
+    -- Reanchor talents button based on mount button visibility
+    talentsBtn:ClearAllPoints()
+    if viewMountBtn:IsShown() then
+        talentsBtn:SetPoint("TOP", viewMountBtn, "BOTTOM", 0, -4)
+    else
+        talentsBtn:SetPoint("TOP", dressUpBtn, "BOTTOM", 0, -4)
+    end
+end
+
 local function RefreshAll()
     if not frame.unit or not frame:IsShown() then return end
     UpdateCharacterInfo()
@@ -1084,6 +1181,7 @@ local function RefreshAll()
     UpdatePvPPage()
     UpdateGuildPage()
     UpdateTalentsButton()
+    UpdateMountButton()
 end
 
 ---------------------------------------------------------------------------

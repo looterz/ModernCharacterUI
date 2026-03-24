@@ -3,13 +3,14 @@
 High-resolution UI for the character, dressing room, and inspect windows with Midnight-style design and quality of life features
 
 ### Character Panel
-- 3x larger window with full-size 3D character model, drag rotation, scroll zoom, and Z to sheathe weapons
+- 3x larger window with a clean design inspired by the new Midnight UI
 - Per-slot item level, quality-colored borders, gem/socket indicators, cooldown overlays
 - Click your name to change title, specialization shown in subtitle
 - Equipment Manager tab to save, load, rename, and delete gear sets
 - PvP Item Levels show for items and your character while in PvP content
 - Reputation tab with search, filters, color-coded standing bars, and detail panel
 - Currency tab with search, filters, backpack tracking (Shift+click), and transfer log
+- Movement Speed tracking based on stats and the current movement mode
 
 ![Character Panel](https://media.forgecdn.net/attachments/1596/780/wowscrnshot_032426_095429-jpg.jpg)
 
