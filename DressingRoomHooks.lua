@@ -74,6 +74,27 @@ local function PreviewMount(mountID)
     -- Show mount collection on the right sidebar
     ns:ShowMountCollection(mountID)
 
+    -- Switch to two-column layout: hide left sidebar, expand preview to fill
+    local outfitCollection = MCUDressingRoomFrame.OutfitCollection
+    local charPreview = MCUDressingRoomFrame.CharacterPreview
+    local wardrobeCollection = MCUDressingRoomFrame.WardrobeCollection
+    if outfitCollection and charPreview and wardrobeCollection then
+        outfitCollection:Hide()
+        -- Break the anchor chain: anchor collection to the frame directly
+        wardrobeCollection:ClearAllPoints()
+        wardrobeCollection:SetPoint("TOPRIGHT", MCUDressingRoomFrame, "TOPRIGHT", -2, -21)
+        -- Preview fills from left edge to collection
+        charPreview:ClearAllPoints()
+        charPreview:SetPoint("TOPLEFT", MCUDressingRoomFrame, "TOPLEFT", 2, -21)
+        charPreview:SetPoint("TOPRIGHT", wardrobeCollection, "TOPLEFT", 0, 0)
+        charPreview:SetHeight(860)
+        -- Stretch the background texture to fill the wider area
+        if charPreview.Background then
+            charPreview.Background:ClearAllPoints()
+            charPreview.Background:SetAllPoints(charPreview)
+        end
+    end
+
     C_Timer.After(0.3, function()
         local modelScene = GetModelScene()
         if not modelScene then return end
@@ -421,6 +442,28 @@ function ns:HideMountCollection()
         end
     end
     currentPreviewMountID = nil
+
+    -- Restore three-column layout
+    if MCUDressingRoomFrame then
+        local outfitCollection = MCUDressingRoomFrame.OutfitCollection
+        local charPreview = MCUDressingRoomFrame.CharacterPreview
+        local wardrobeCollection = MCUDressingRoomFrame.WardrobeCollection
+        if outfitCollection and charPreview then
+            outfitCollection:Show()
+            charPreview:ClearAllPoints()
+            charPreview:SetPoint("TOPLEFT", outfitCollection, "TOPRIGHT", 0, 0)
+            charPreview:SetSize(658, 860)
+            -- Restore background to atlas size anchored at TOPLEFT
+            if charPreview.Background then
+                charPreview.Background:ClearAllPoints()
+                charPreview.Background:SetPoint("TOPLEFT")
+            end
+            if wardrobeCollection then
+                wardrobeCollection:ClearAllPoints()
+                wardrobeCollection:SetPoint("TOPLEFT", charPreview, "TOPRIGHT", 0, 0)
+            end
+        end
+    end
 
     -- Restore the normal appearances grid
     if MCUDR_AppearancesFrame and MCUDressingRoomFrame and MCUDressingRoomFrame:IsShown() then
