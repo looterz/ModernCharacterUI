@@ -18,7 +18,7 @@ local EQUIP_ICON_SIZE  = 22
 local frame = CreateFrame("Frame", "MCUInspectFrame", UIParent, "PortraitFrameTemplate")
 frame:SetSize(ns.FRAME_WIDTH, ns.FRAME_HEIGHT)
 frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 40, -124)
-frame:SetFrameStrata("MEDIUM")
+frame:SetFrameStrata("HIGH")
 frame:SetClampedToScreen(true)
 frame:Hide()
 ns.inspectFrame = frame
