@@ -63,7 +63,7 @@ model:SetScript("OnUpdate", function(self)
         local x = GetCursorPosition()
         local delta = (x - (self.prevX or x)) * 0.01
         self.prevX = x
-        self.facing = (self.facing or 0) - delta
+        self.facing = (self.facing or 0) + delta
         self:SetFacing(self.facing)
     end
 end)
