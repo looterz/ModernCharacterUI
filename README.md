@@ -30,7 +30,7 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 
 ![Dressing Room](https://media.forgecdn.net/attachments/1596/79/wowscrnshot_032326_213949-jpg.jpg)
 
-![Mount Preview](https://media.forgecdn.net/attachments/1596/205/wowscrnshot_032326_235712-jpg.jpg)
+![Mount Preview](https://media.forgecdn.net/attachments/1596/249/wowscrnshot_032426_002658-jpg.jpg)
 
 ### Inspect Window
 - Same design as the character panel with 3D model and 18 equipment slots
