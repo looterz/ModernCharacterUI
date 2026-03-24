@@ -46,6 +46,7 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Combat lockout option to prevent Character window from opening mid-fight
 - Preview any item in the dressing room and then click the item slot to view it in your collection
 - Search & Filter support for the Reputation and Currency tabs to quickly find what you need
+- Preview mounts in the dressing room with a dedicated mount browser, search, and paging across all mounts in the game
 - All windows remember their position between sessions
 
 ## Installation
