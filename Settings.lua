@@ -9,6 +9,11 @@ local defaults = {
         overrideDressingRoom = true,
         overrideInspect = true,
         blockInCombat = true,
+        showEnchantStatus = false,
+        showUpgradeTrack = false,
+        characterScale = 100,
+        inspectScale = 100,
+        dressingRoomScale = 100,
         position = nil,  -- { point, relativePoint, x, y }
         dressingRoomPosition = nil,
         inspectPosition = nil,
@@ -108,6 +113,112 @@ function MCU:GetOptions()
                     self.db.global.blockInCombat = value
                 end,
             },
+            overlayHeader = {
+                order = 5,
+                type = "header",
+                name = "Slot Overlays",
+            },
+            showEnchantStatus = {
+                order = 6,
+                type = "toggle",
+                name = "Show Enchant Status",
+                desc = "Displays a warning indicator on equipment slots "
+                    .. "that are missing an enchant.",
+                width = "full",
+                get = function()
+                    return self.db.global.showEnchantStatus
+                end,
+                set = function(_, value)
+                    self.db.global.showEnchantStatus = value
+                    if ns.RefreshAll then ns:RefreshAll() end
+                end,
+            },
+            showUpgradeTrack = {
+                order = 7,
+                type = "toggle",
+                name = "Show Upgrade Track",
+                desc = "Displays the upgrade progress (e.g. 2/6) on "
+                    .. "equipment slots that support upgrading.",
+                width = "full",
+                get = function()
+                    return self.db.global.showUpgradeTrack
+                end,
+                set = function(_, value)
+                    self.db.global.showUpgradeTrack = value
+                    if ns.RefreshAll then ns:RefreshAll() end
+                end,
+            },
+            scaleHeader = {
+                order = 8,
+                type = "header",
+                name = "Window Scale",
+            },
+            characterScale = {
+                order = 9,
+                type = "range",
+                name = "Character Panel Scale",
+                desc = "Adjust the size of the Character Panel window.",
+                min = 50,
+                max = 200,
+                step = 5,
+                width = "full",
+                get = function()
+                    return self.db.global.characterScale
+                end,
+                set = function(_, value)
+                    self.db.global.characterScale = value
+                    self.db.global.position = nil
+                    if ModernCharacterUIFrame then
+                        ModernCharacterUIFrame:ClearAllPoints()
+                        ModernCharacterUIFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -104)
+                    end
+                    ns:ApplyFrameScale()
+                end,
+            },
+            inspectScale = {
+                order = 10,
+                type = "range",
+                name = "Inspect Window Scale",
+                desc = "Adjust the size of the Inspect window.",
+                min = 50,
+                max = 200,
+                step = 5,
+                width = "full",
+                get = function()
+                    return self.db.global.inspectScale
+                end,
+                set = function(_, value)
+                    self.db.global.inspectScale = value
+                    self.db.global.inspectPosition = nil
+                    if MCUInspectFrame then
+                        MCUInspectFrame:ClearAllPoints()
+                        MCUInspectFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 40, -124)
+                    end
+                    ns:ApplyFrameScale()
+                end,
+            },
+            dressingRoomScale = {
+                order = 11,
+                type = "range",
+                name = "Dressing Room Scale",
+                desc = "Adjust the size of the Dressing Room window.",
+                min = 50,
+                max = 200,
+                step = 5,
+                width = "full",
+                get = function()
+                    return self.db.global.dressingRoomScale
+                end,
+                set = function(_, value)
+                    self.db.global.dressingRoomScale = value
+                    self.db.global.dressingRoomPosition = nil
+                    if MCUDressingRoomFrame then
+                        MCUDressingRoomFrame:ClearAllPoints()
+                        MCUDressingRoomFrame:SetPoint("TOP", UIParent, "TOP", 0, -41)
+                    end
+                    ns:ApplyFrameScale()
+                end,
+            },
         },
     }
 end
@@ -124,6 +235,14 @@ function MCU:HookCharacterPanel()
             return
         end
         if MCU.db.global.overrideLegacyPanel then
+            -- If the panel is already shown and something is on the cursor
+            -- (e.g. enchant scroll, item use), keep it open so the
+            -- interaction isn't interrupted.
+            if ModernCharacterUIFrame and ModernCharacterUIFrame:IsShown() then
+                if SpellIsTargeting() or CursorHasItem() or CursorHasSpell() then
+                    return
+                end
+            end
             ns:TogglePanel()
             return
         end

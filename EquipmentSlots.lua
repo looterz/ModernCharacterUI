@@ -67,6 +67,22 @@ local function CreateSlotButton(parent, slotInfo, index, anchorPoint, xOff, yOff
     cooldown:SetDrawEdge(false)
     btn.cooldown = cooldown
 
+    -- Enchant status indicator (top-left corner, shown when enchanted)
+    local enchantWarning = btn:CreateTexture(nil, "OVERLAY", nil, 3)
+    enchantWarning:SetSize(11, 11)
+    enchantWarning:SetPoint("TOPLEFT", 2, -2)
+    enchantWarning:SetAtlas("Professions-Icon-Quality-Tier3-Small")
+    enchantWarning:Hide()
+    btn.enchantWarning = enchantWarning
+
+    -- Upgrade track text (top-right corner, small)
+    local upgradeText = btn:CreateFontString(nil, "OVERLAY")
+    upgradeText:SetFont(STANDARD_TEXT_FONT, 9, "OUTLINE")
+    upgradeText:SetPoint("TOPRIGHT", -2, -4)
+    upgradeText:SetTextColor(1, 0.82, 0, 1)
+    upgradeText:Hide()
+    btn.upgradeText = upgradeText
+
     btn.sockets = {}
     for i = 1, MAX_SOCKETS do
         local gem = btn:CreateTexture(nil, "OVERLAY", nil, 2)
@@ -244,6 +260,42 @@ function ns:UpdateSlot(slotID)
             end
         end
 
+        -- Enchant status overlay
+        btn.enchantWarning:Hide()
+        if ns.db and ns.db.global and ns.db.global.showEnchantStatus and itemLink then
+            -- Parse enchant ID from item link: item:id:enchantID:...
+            local enchantID = itemLink:match("item:%d+:(%d+)")
+            if enchantID and tonumber(enchantID) > 0 then
+                btn.enchantWarning:Show()
+            end
+        end
+
+        -- Upgrade track overlay
+        btn.upgradeText:Hide()
+        if ns.db and ns.db.global and ns.db.global.showUpgradeTrack and itemLink then
+            if C_TooltipInfo and C_TooltipInfo.GetInventoryItem then
+                local data = C_TooltipInfo.GetInventoryItem("player", slotID)
+                if data and data.lines then
+                    for _, line in ipairs(data.lines) do
+                        if line.leftText then
+                            -- Match "Upgrade: TrackName X/Y" format
+                            local current, maximum = line.leftText:match("(%d+)/(%d+)")
+                            if current and maximum and line.leftText:lower():find("upgrade") then
+                                btn.upgradeText:SetText(current .. "/" .. maximum)
+                                if tonumber(current) >= tonumber(maximum) then
+                                    btn.upgradeText:SetTextColor(0.0, 1.0, 0.0, 1)
+                                else
+                                    btn.upgradeText:SetTextColor(1, 0.82, 0, 1)
+                                end
+                                btn.upgradeText:Show()
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
     else
         local emptyTex = self:GetEmptySlotTexture(slotID, btn.slotName)
         btn.icon:SetTexture(emptyTex)
@@ -254,6 +306,8 @@ function ns:UpdateSlot(slotID)
         end
         btn.ilvlText:SetText("")
         btn.cooldown:Hide()
+        btn.enchantWarning:Hide()
+        btn.upgradeText:Hide()
         for i = 1, MAX_SOCKETS do
             btn.sockets[i]:Hide()
         end

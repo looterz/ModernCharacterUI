@@ -58,6 +58,24 @@ ns.EMPTY_SLOT_TEXTURES = {
     [19] = 136527,
 }
 
+--- Apply user-configured scale to all MCU frames.
+function ns:ApplyFrameScale()
+    if not ns.db or not ns.db.global then return end
+    local charScale = (ns.db.global.characterScale or 100) / 100
+    local inspScale = (ns.db.global.inspectScale or 100) / 100
+
+    if ModernCharacterUIFrame then
+        ModernCharacterUIFrame:SetScale(charScale)
+    end
+    if MCUInspectFrame then
+        MCUInspectFrame:SetScale(inspScale)
+    end
+    -- Dressing room uses FitToScreen on top of the user scale
+    if MCUDressingRoomFrame and MCUDressingRoomFrame.FitToScreen then
+        MCUDressingRoomFrame:FitToScreen()
+    end
+end
+
 --- Try the two-return form of GetInventorySlotInfo first; fall back to the
 --- pre-baked file-ID table above.
 function ns:GetEmptySlotTexture(slotID, slotName)

@@ -109,6 +109,19 @@ function MCUDR_FrameMixin:OnLoad()
 	self:SetPortraitAtlasRaw("transmog-icon-ui");
 	self:SetTitle(DRESSUP_FRAME or "Dressing Room");
 
+	self:SetMovable(true);
+	self:SetClampedToScreen(true);
+	self:RegisterForDrag("LeftButton");
+	self:SetScript("OnDragStart", function(s) s:StartMoving(); end);
+	self:SetScript("OnDragStop", function(s)
+		s:StopMovingOrSizing();
+		local addonNS = s._addonNS;
+		if addonNS and addonNS.db and addonNS.db.global then
+			local point, _, relativePoint, xOfs, yOfs = s:GetPoint();
+			addonNS.db.global.dressingRoomPosition = { point, relativePoint, xOfs, yOfs };
+		end
+	end);
+
 	if not MCUDR_HelpPlatesSupported() then
 		self.HelpPlateButton:Hide();
 	end
@@ -155,14 +168,28 @@ function MCUDR_FrameMixin:FitToScreen()
 	local screenW, screenH = GetScreenWidth(), GetScreenHeight();
 	if frameW <= 0 or frameH <= 0 or screenW <= 0 or screenH <= 0 then return; end
 
+	local userScale = 1;
+	local addonNS = self._addonNS;
+	if addonNS and addonNS.db and addonNS.db.global then
+		userScale = (addonNS.db.global.dressingRoomScale or 100) / 100;
+	end
+
 	local scaleX = (screenW - 40) / frameW;
 	local scaleY = (screenH - 40) / frameH;
-	local scale = min(scaleX, scaleY, 1);
-	self:SetScale(scale);
+	local fitScale = min(scaleX, scaleY, 1);
+	self:SetScale(fitScale * userScale);
 end
 
 function MCUDR_FrameMixin:OnShow()
 	PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN);
+
+	-- Restore saved position
+	local addonNS = self._addonNS;
+	if addonNS and addonNS.db and addonNS.db.global and addonNS.db.global.dressingRoomPosition then
+		local pos = addonNS.db.global.dressingRoomPosition;
+		self:ClearAllPoints();
+		self:SetPoint(pos[1], UIParent, pos[2], pos[3], pos[4]);
+	end
 
 	FrameUtil.RegisterFrameForEvents(self, self.DYNAMIC_EVENTS);
 

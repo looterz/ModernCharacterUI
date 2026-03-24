@@ -255,6 +255,7 @@ frame:SetScript("OnHide", function(self)
     for _, ev in ipairs(GLOBAL_EVENTS) do
         self:UnregisterEvent(ev)
     end
+    if ns._SetMainTab then ns._SetMainTab("character") end
     PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
 end)
 
@@ -265,6 +266,7 @@ frame:SetScript("OnEvent", function(self, event, arg1, ...)
             self:ClearAllPoints()
             self:SetPoint(pos[1], UIParent, pos[2], pos[3], pos[4])
         end
+        ns:ApplyFrameScale()
         return
     end
 
@@ -412,6 +414,7 @@ local function SetMainTab(tabName)
         if ns.UpdateCurrency then ns:UpdateCurrency() end
     end
 end
+ns._SetMainTab = SetMainTab
 
 mainCharTab:SetScript("OnClick", function()
     PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
