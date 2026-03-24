@@ -235,10 +235,23 @@ function MCUDR_FrameMixin:OnShow()
 		resetBtn:SetText(RESET or "Reset");
 		resetBtn:SetScript("OnClick", function()
 			PlaySound(SOUNDKIT.UI_TRANSMOG_REVERTING_GEAR_SLOT);
+			-- Clean up mount actor if one exists from a mount preview
+			if preview.ModelScene and preview.ModelScene._mountActor then
+				preview.ModelScene._mountActor:ClearModel();
+				preview.ModelScene._mountActor = nil;
+			end
+			-- Restore character preview scene and player model
+			if preview.ModelScene then
+				preview.ModelScene:TransitionToModelSceneID(290, CAMERA_TRANSITION_TYPE_IMMEDIATE, CAMERA_MODIFICATION_TYPE_DISCARD, true);
+			end
 			local actor = preview.ModelScene and preview.ModelScene:GetPlayerActor();
 			if actor then
 				actor:SetModelByUnit("player", false, true, false,
 					PlayerUtil.ShouldUseNativeFormInModelScene and PlayerUtil.ShouldUseNativeFormInModelScene());
+			end
+			-- Restore equipment slots hidden during mount preview
+			if preview.drSlotFrames then
+				preview:SetupSlots();
 			end
 			MCUDR_PreviewedSlots = {};
 			-- Deselect any saved appearance in the outfit list

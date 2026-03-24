@@ -42,6 +42,92 @@ local function ShowOurDressingRoom()
     end
 end
 
+local function GetModelScene()
+    if not MCUDressingRoomFrame then return nil end
+    local charPreview = MCUDressingRoomFrame.CharacterPreview
+    return charPreview and charPreview.ModelScene or nil
+end
+
+local function GetMountIDFromLink(link)
+    if not link or not C_MountJournal then return nil end
+    local linkType, linkOptions = LinkUtil.ExtractLink(link)
+    local linkID = linkOptions and LinkUtil.SplitLinkOptions(linkOptions)
+    linkID = tonumber(linkID)
+    if not linkID then return nil end
+    local mountID
+    if linkType == "item" then
+        mountID = C_MountJournal.GetMountFromItem(linkID)
+    elseif linkType == "spell" or linkType == "mount" then
+        mountID = C_MountJournal.GetMountFromSpell(linkID)
+    end
+    return (mountID and mountID > 0) and mountID or nil
+end
+
+local function PreviewMount(mountID)
+    ShowOurDressingRoom()
+    if not mountID or not C_MountJournal then return end
+
+    local creatureDisplayID, _, _, isSelfMount, _, modelSceneID, animID, spellVisualKitID, disablePlayerMountPreview =
+        C_MountJournal.GetMountInfoExtraByID(mountID)
+    if not creatureDisplayID or creatureDisplayID == 0 then return end
+
+    C_Timer.After(0.3, function()
+        local modelScene = GetModelScene()
+        if not modelScene then return end
+
+        -- Hide the player actor so only the mount is visible
+        local playerActor = modelScene:GetPlayerActor()
+        if playerActor then
+            playerActor:ClearModel()
+        end
+
+        -- Hide equipment slots during mount preview
+        local charPreview = MCUDressingRoomFrame.CharacterPreview
+        if charPreview and charPreview.drSlotFrames then
+            for _, btn in pairs(charPreview.drSlotFrames) do
+                btn:Hide()
+            end
+        end
+
+        -- Transition to the mount's own scene for proper camera framing
+        modelScene:SetViewInsets(0, 0, 0, 0)
+        local forceEvenIfSame = true
+        modelScene:TransitionToModelSceneID(modelSceneID, CAMERA_TRANSITION_TYPE_IMMEDIATE, CAMERA_MODIFICATION_TYPE_DISCARD, forceEvenIfSame)
+
+        -- Clean up any previous mount actor we created
+        if modelScene._mountActor then
+            modelScene._mountActor:ClearModel()
+            modelScene._mountActor = nil
+        end
+
+        -- Create a new actor for the mount
+        local mountActor = modelScene:CreateActor()
+        if not mountActor then return end
+        modelScene._mountActor = mountActor
+
+        mountActor:SetModelByCreatureDisplayID(creatureDisplayID, true)
+        mountActor:SetUseCenterForOrigin(true, true, true)
+
+        if isSelfMount then
+            mountActor:SetAnimationBlendOperation(Enum.ModelBlendOperation.None)
+            mountActor:SetAnimation(618) -- MountSelfIdle
+        else
+            mountActor:SetAnimationBlendOperation(Enum.ModelBlendOperation.Anim)
+            mountActor:SetAnimation(0)
+        end
+
+        if spellVisualKitID and spellVisualKitID > 0 then
+            mountActor:SetSpellVisualKit(spellVisualKitID)
+        end
+
+        -- Extend zoom range for large mounts
+        local camera = modelScene:GetActiveCamera()
+        if camera then
+            camera:SetMaxZoomDistance(camera:GetMaxZoomDistance() * 2.5)
+        end
+    end)
+end
+
 local function RefreshSlotsAfterTryOn()
     C_Timer.After(0.3, function()
         if MCUDressingRoomFrame and MCUDressingRoomFrame.CharacterPreview
@@ -101,7 +187,10 @@ local function TryOnItem(link)
 
     -- If item wasn't cached, retry when it becomes available
     if not C_Item.GetItemInfo(link) then
-        C_Item.RequestLoadItemDataByID(C_Item.GetItemInfoInstant(link))
+        local itemID = C_Item.GetItemInfoInstant(link)
+        if itemID then
+            C_Item.RequestLoadItemDataByID(itemID)
+        end
         C_Timer.After(0.5, function()
             StorePreviewSlot(link)
             RefreshSlotsAfterTryOn()
@@ -140,7 +229,12 @@ function ns:InitDressingRoomHooks()
         local original = DressUpLink
         DressUpLink = function(link)
             if ShouldPassThrough() or not link then return original(link) end
-            TryOnItem(link)
+            local mountID = GetMountIDFromLink(link)
+            if mountID then
+                PreviewMount(mountID)
+            else
+                TryOnItem(link)
+            end
         end
     end
 
@@ -148,7 +242,12 @@ function ns:InitDressingRoomHooks()
         local original = DressUpItemLink
         DressUpItemLink = function(link)
             if ShouldPassThrough() or not link then return original(link) end
-            TryOnItem(link)
+            local mountID = GetMountIDFromLink(link)
+            if mountID then
+                PreviewMount(mountID)
+            else
+                TryOnItem(link)
+            end
         end
     end
 
@@ -185,7 +284,7 @@ function ns:InitDressingRoomHooks()
         local original = DressUpMount
         DressUpMount = function(mountID, ...)
             if ShouldPassThrough() then return original(mountID, ...) end
-            ShowOurDressingRoom()
+            PreviewMount(mountID)
         end
     end
 
