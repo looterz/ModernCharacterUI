@@ -71,6 +71,7 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - **Show Enchant Status**: Off — displays an indicator on enchanted equipment slots
 - **Show Upgrade Track**: Off — displays upgrade progress (e.g. 2/6) on equipment slots
 - **Slot Overlay Font Size**: 8-16 (default 10) — adjusts font size for item level, upgrade track, and other slot text
+- **Overlay Readability Style**: Gradient Strips (default) — choose a background style for slot overlays: None, Thick Outline, Gradient Strips, Darkened Icon, Corner Darkening, or Drop Shadow
 - **Character Panel Scale**: 50-200% (default 100%)
 - **Inspect Window Scale**: 50-200% (default 100%)
 - **Dressing Room Scale**: 50-200% (default 100%)

@@ -12,6 +12,7 @@ local defaults = {
         showEnchantStatus = false,
         showUpgradeTrack = false,
         slotFontSize = 10,
+        slotOverlayStyle = "gradient",
         characterScale = 100,
         inspectScale = 100,
         dressingRoomScale = 100,
@@ -193,13 +194,39 @@ function MCU:GetOptions()
                     if ns.RefreshAll then ns:RefreshAll() end
                 end,
             },
-            scaleHeader = {
+            slotOverlayStyle = {
                 order = 9,
+                type = "select",
+                name = "Overlay Readability Style",
+                desc = "Choose a background style to improve readability of "
+                    .. "text and icons overlaid on equipment slot icons.",
+                width = "full",
+                values = {
+                    ["none"] = "None",
+                    ["thick_outline"] = "Thick Outline",
+                    ["gradient"] = "Gradient Strips",
+                    ["darken"] = "Darkened Icon",
+                    ["corners"] = "Corner Darkening",
+                    ["shadow"] = "Drop Shadow",
+                },
+                sorting = { "none", "thick_outline", "gradient", "darken", "corners", "shadow" },
+                get = function()
+                    return self.db.global.slotOverlayStyle
+                end,
+                set = function(_, value)
+                    self.db.global.slotOverlayStyle = value
+                    ns:ApplySlotOverlayStyle()
+                    ns:ApplySlotFontSize()
+                    if ns.RefreshAll then ns:RefreshAll() end
+                end,
+            },
+            scaleHeader = {
+                order = 10,
                 type = "header",
                 name = "Window Scale",
             },
             characterScale = {
-                order = 10,
+                order = 11,
                 type = "range",
                 name = "Character Panel Scale",
                 desc = "Adjust the size of the Character Panel window.",
@@ -221,7 +248,7 @@ function MCU:GetOptions()
                 end,
             },
             inspectScale = {
-                order = 11,
+                order = 12,
                 type = "range",
                 name = "Inspect Window Scale",
                 desc = "Adjust the size of the Inspect window.",
@@ -243,7 +270,7 @@ function MCU:GetOptions()
                 end,
             },
             dressingRoomScale = {
-                order = 12,
+                order = 13,
                 type = "range",
                 name = "Dressing Room Scale",
                 desc = "Adjust the size of the Dressing Room window.",

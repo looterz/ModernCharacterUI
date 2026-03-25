@@ -69,7 +69,7 @@ local function CreateSlotButton(parent, slotInfo, index, anchorPoint, xOff, yOff
 
     -- Enchant status indicator (top-left corner, shown when enchanted)
     local enchantWarning = btn:CreateTexture(nil, "OVERLAY", nil, 3)
-    enchantWarning:SetSize(11, 11)
+    enchantWarning:SetSize(14, 14)
     enchantWarning:SetPoint("TOPLEFT", 2, -2)
     enchantWarning:SetAtlas("Professions-Icon-Quality-Tier3-Small")
     enchantWarning:Hide()
@@ -82,6 +82,91 @@ local function CreateSlotButton(parent, slotInfo, index, anchorPoint, xOff, yOff
     upgradeText:SetTextColor(1, 0.82, 0, 1)
     upgradeText:Hide()
     btn.upgradeText = upgradeText
+
+    -- Overlay readability elements (created once, toggled by style)
+    local overlays = {}
+
+    -- Full darken overlay
+    local darken = btn:CreateTexture(nil, "ARTWORK", nil, 7)
+    darken:SetPoint("TOPLEFT", icon)
+    darken:SetPoint("BOTTOMRIGHT", icon)
+    darken:SetColorTexture(0, 0, 0, 0.35)
+    darken:Hide()
+    overlays.darken = darken
+
+    -- Gradient strip: bottom
+    local gradBot = btn:CreateTexture(nil, "ARTWORK", nil, 7)
+    gradBot:SetPoint("BOTTOMLEFT", icon)
+    gradBot:SetPoint("BOTTOMRIGHT", icon)
+    gradBot:SetHeight(20)
+    gradBot:SetTexture("Interface\\Buttons\\WHITE8x8")
+    gradBot:SetGradient("VERTICAL", CreateColor(0, 0, 0, 0.7), CreateColor(0, 0, 0, 0))
+    gradBot:Hide()
+    overlays.gradBot = gradBot
+
+    -- Gradient strip: top
+    local gradTop = btn:CreateTexture(nil, "ARTWORK", nil, 7)
+    gradTop:SetPoint("TOPLEFT", icon)
+    gradTop:SetPoint("TOPRIGHT", icon)
+    gradTop:SetHeight(18)
+    gradTop:SetTexture("Interface\\Buttons\\WHITE8x8")
+    gradTop:SetGradient("VERTICAL", CreateColor(0, 0, 0, 0), CreateColor(0, 0, 0, 0.7))
+    gradTop:Hide()
+    overlays.gradTop = gradTop
+
+    -- Gradient strip: top-left (enchant icon area)
+    local gradTL = btn:CreateTexture(nil, "ARTWORK", nil, 7)
+    gradTL:SetPoint("TOPLEFT", icon)
+    gradTL:SetSize(20, 20)
+    gradTL:SetTexture("Interface\\Buttons\\WHITE8x8")
+    gradTL:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, 0.6), CreateColor(0, 0, 0, 0))
+    gradTL:Hide()
+    overlays.gradTL = gradTL
+
+    -- Corner darken: bottom-right
+    local cornerBR = btn:CreateTexture(nil, "ARTWORK", nil, 7)
+    cornerBR:SetPoint("BOTTOMRIGHT", icon)
+    cornerBR:SetSize(28, 16)
+    cornerBR:SetTexture("Interface\\Buttons\\WHITE8x8")
+    cornerBR:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, 0), CreateColor(0, 0, 0, 0.6))
+    cornerBR:Hide()
+    overlays.cornerBR = cornerBR
+
+    -- Corner darken: top-right
+    local cornerTR = btn:CreateTexture(nil, "ARTWORK", nil, 7)
+    cornerTR:SetPoint("TOPRIGHT", icon)
+    cornerTR:SetSize(28, 14)
+    cornerTR:SetTexture("Interface\\Buttons\\WHITE8x8")
+    cornerTR:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, 0), CreateColor(0, 0, 0, 0.6))
+    cornerTR:Hide()
+    overlays.cornerTR = cornerTR
+
+    -- Corner darken: top-left (enchant icon area)
+    local cornerTL = btn:CreateTexture(nil, "ARTWORK", nil, 7)
+    cornerTL:SetPoint("TOPLEFT", icon)
+    cornerTL:SetSize(20, 20)
+    cornerTL:SetTexture("Interface\\Buttons\\WHITE8x8")
+    cornerTL:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, 0.6), CreateColor(0, 0, 0, 0))
+    cornerTL:Hide()
+    overlays.cornerTL = cornerTL
+
+    -- Drop shadow behind ilvlText
+    local shadowIlvl = btn:CreateFontString(nil, "ARTWORK")
+    shadowIlvl:SetFont(STANDARD_TEXT_FONT, 10, "OUTLINE")
+    shadowIlvl:SetPoint("BOTTOMRIGHT", -2, 2)
+    shadowIlvl:SetTextColor(0, 0, 0, 0.8)
+    shadowIlvl:Hide()
+    overlays.shadowIlvl = shadowIlvl
+
+    -- Drop shadow behind upgradeText
+    local shadowUpgrade = btn:CreateFontString(nil, "ARTWORK")
+    shadowUpgrade:SetFont(STANDARD_TEXT_FONT, 9, "OUTLINE")
+    shadowUpgrade:SetPoint("TOPRIGHT", -1, -3)
+    shadowUpgrade:SetTextColor(0, 0, 0, 0.8)
+    shadowUpgrade:Hide()
+    overlays.shadowUpgrade = shadowUpgrade
+
+    btn.overlays = overlays
 
     btn.sockets = {}
     for i = 1, MAX_SOCKETS do
@@ -262,12 +347,19 @@ function ns:UpdateSlot(slotID)
 
         -- Enchant status overlay
         btn.enchantWarning:Hide()
+        local isEnchanted = false
         if ns.db and ns.db.global and ns.db.global.showEnchantStatus and itemLink then
-            -- Parse enchant ID from item link: item:id:enchantID:...
             local enchantID = itemLink:match("item:%d+:(%d+)")
             if enchantID and tonumber(enchantID) > 0 then
                 btn.enchantWarning:Show()
+                isEnchanted = true
             end
+        end
+        -- Show enchant area overlay only when enchant icon is visible
+        if btn.overlays then
+            local style = (ns.db and ns.db.global and ns.db.global.slotOverlayStyle) or "none"
+            if btn.overlays.gradTL then btn.overlays.gradTL:SetShown(style == "gradient" and isEnchanted) end
+            btn.overlays.cornerTL:SetShown(style == "corners" and isEnchanted)
         end
 
         -- Upgrade track overlay
@@ -310,6 +402,21 @@ function ns:UpdateSlot(slotID)
         btn.upgradeText:Hide()
         for i = 1, MAX_SOCKETS do
             btn.sockets[i]:Hide()
+        end
+    end
+
+    -- Sync overlay style (shadow text etc.)
+    if btn.overlays then
+        local style = (ns.db and ns.db.global and ns.db.global.slotOverlayStyle) or "none"
+        local showShadow = (style == "shadow")
+        if showShadow then
+            btn.overlays.shadowIlvl:SetText(btn.ilvlText:GetText() or "")
+            btn.overlays.shadowIlvl:SetShown(btn.ilvlText:GetText() ~= nil and btn.ilvlText:GetText() ~= "")
+            btn.overlays.shadowUpgrade:SetText(btn.upgradeText:GetText() or "")
+            btn.overlays.shadowUpgrade:SetShown(btn.upgradeText:IsShown())
+        else
+            btn.overlays.shadowIlvl:Hide()
+            btn.overlays.shadowUpgrade:Hide()
         end
     end
 end

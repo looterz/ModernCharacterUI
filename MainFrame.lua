@@ -268,6 +268,7 @@ frame:SetScript("OnEvent", function(self, event, arg1, ...)
         end
         ns:ApplyFrameScale()
         ns:ApplySlotFontSize()
+        ns:ApplySlotOverlayStyle()
         return
     end
 

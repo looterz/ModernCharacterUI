@@ -81,29 +81,65 @@ function ns:ApplySlotFontSize()
     if not ns.db or not ns.db.global then return end
     local fontSize = ns.db.global.slotFontSize or 10
     local upgradeFontSize = max(fontSize - 1, 8)
+    local style = ns.db.global.slotOverlayStyle or "none"
+    local fontFlags = (style == "thick_outline") and "OUTLINE, THICKOUTLINE" or "OUTLINE"
 
-    -- Character Panel slots
-    if ns.slotButtons then
-        for _, btn in pairs(ns.slotButtons) do
-            if btn.ilvlText then
-                btn.ilvlText:SetFont(STANDARD_TEXT_FONT, fontSize, "OUTLINE")
+    local function ApplyToButton(btn)
+        if btn.ilvlText then
+            btn.ilvlText:SetFont(STANDARD_TEXT_FONT, fontSize, fontFlags)
+        end
+        if btn.upgradeText then
+            btn.upgradeText:SetFont(STANDARD_TEXT_FONT, upgradeFontSize, fontFlags)
+        end
+        if btn.overlays then
+            if btn.overlays.shadowIlvl then
+                btn.overlays.shadowIlvl:SetFont(STANDARD_TEXT_FONT, fontSize, fontFlags)
             end
-            if btn.upgradeText then
-                btn.upgradeText:SetFont(STANDARD_TEXT_FONT, upgradeFontSize, "OUTLINE")
+            if btn.overlays.shadowUpgrade then
+                btn.overlays.shadowUpgrade:SetFont(STANDARD_TEXT_FONT, upgradeFontSize, fontFlags)
             end
         end
     end
 
-    -- Inspect Panel slots
+    if ns.slotButtons then
+        for _, btn in pairs(ns.slotButtons) do ApplyToButton(btn) end
+    end
     if MCUInspectFrame and MCUInspectFrame.slotButtons then
-        for _, btn in pairs(MCUInspectFrame.slotButtons) do
-            if btn.ilvlText then
-                btn.ilvlText:SetFont(STANDARD_TEXT_FONT, fontSize, "OUTLINE")
-            end
-            if btn.upgradeText then
-                btn.upgradeText:SetFont(STANDARD_TEXT_FONT, upgradeFontSize, "OUTLINE")
-            end
+        for _, btn in pairs(MCUInspectFrame.slotButtons) do ApplyToButton(btn) end
+    end
+end
+
+--- Apply the selected overlay readability style to all slot buttons.
+function ns:ApplySlotOverlayStyle()
+    if not ns.db or not ns.db.global then return end
+    local style = ns.db.global.slotOverlayStyle or "none"
+
+    local function ApplyToButton(btn)
+        if not btn.overlays then return end
+        local o = btn.overlays
+
+        o.darken:SetShown(style == "darken")
+        o.gradBot:SetShown(style == "gradient")
+        o.gradTop:SetShown(style == "gradient")
+        -- gradTL and cornerTL are managed per-slot based on enchant visibility
+        o.cornerBR:SetShown(style == "corners")
+        o.cornerTR:SetShown(style == "corners")
+
+        -- Drop shadow: sync text with ilvl/upgrade values on each refresh
+        local showShadow = (style == "shadow")
+        o.shadowIlvl:SetShown(showShadow)
+        o.shadowUpgrade:SetShown(showShadow and btn.upgradeText and btn.upgradeText:IsShown())
+        if showShadow then
+            o.shadowIlvl:SetText(btn.ilvlText and btn.ilvlText:GetText() or "")
+            o.shadowUpgrade:SetText(btn.upgradeText and btn.upgradeText:GetText() or "")
         end
+    end
+
+    if ns.slotButtons then
+        for _, btn in pairs(ns.slotButtons) do ApplyToButton(btn) end
+    end
+    if MCUInspectFrame and MCUInspectFrame.slotButtons then
+        for _, btn in pairs(MCUInspectFrame.slotButtons) do ApplyToButton(btn) end
     end
 end
 
