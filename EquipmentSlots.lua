@@ -45,12 +45,22 @@ local function CreateSlotButton(parent, slotInfo, index, anchorPoint, xOff, yOff
 
     -- Hide native visual elements we replace with our own
     if btn.NormalTexture then btn.NormalTexture:SetAlpha(0) end
+    if btn:GetNormalTexture() then btn:GetNormalTexture():SetAlpha(0) end
+    if btn:GetPushedTexture() then btn:GetPushedTexture():SetAlpha(0) end
     if btn.IconBorder then btn.IconBorder:SetAlpha(0) end
     if btn.IconOverlay2 then btn.IconOverlay2:SetAlpha(0) end
+    -- Hide any slot background/border textures from the native button
+    local regions = { btn:GetRegions() }
+    for _, region in ipairs(regions) do
+        if region:IsObjectType("Texture") and region ~= btn.icon and region ~= btn.Icon then
+            local drawLayer = region:GetDrawLayer()
+            if drawLayer == "BACKGROUND" or drawLayer == "BORDER" then
+                region:SetAlpha(0)
+            end
+        end
+    end
 
-    local bg = btn:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints()
-    bg:SetColorTexture(0.08, 0.08, 0.1, 0.9)
+    -- No custom background needed — the native button provides its own
 
     -- Use the native icon if available, otherwise create our own
     local icon = btn.icon or btn.Icon
