@@ -12,13 +12,13 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Currency tab with search, filters, backpack tracking (Shift+click), and transfer log
 - Movement Speed tracking based on stats and the current movement mode
 
-![Character Panel](https://media.forgecdn.net/attachments/1596/780/wowscrnshot_032426_095429-jpg.jpg)
+![Character Panel](https://media.forgecdn.net/attachments/1599/278/wowscrnshot_032526_212636-jpg.jpg)
 
-![Character Panel PvP Mode](https://media.forgecdn.net/attachments/1596/777/wowscrnshot_032426_095701-jpg.jpg)
+![Character Panel PvP Mode](https://media.forgecdn.net/attachments/1599/276/wowscrnshot_032626_003633-jpg.jpg)
 
-![Reputation Tab](https://media.forgecdn.net/attachments/1596/779/wowscrnshot_032426_095435-jpg.jpg)
+![Reputation Tab](https://media.forgecdn.net/attachments/1599/279/wowscrnshot_032526_212642-jpg.jpg)
 
-![Currency Tab](https://media.forgecdn.net/attachments/1596/778/wowscrnshot_032426_095442-jpg.jpg)
+![Currency Tab](https://media.forgecdn.net/attachments/1599/280/wowscrnshot_032526_212646-jpg.jpg)
 
 ### Dressing Room
 - Full Transmog-style 3-panel layout with outfit list, character preview, and built-in appearances browser
@@ -33,9 +33,11 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Housing furniture preview mode with 3D model browser, category filter, search, and paging
 - Ctrl+click any furniture item link or click the Furniture button to browse and preview housing decorations
 
-![Dressing Room](https://media.forgecdn.net/attachments/1596/79/wowscrnshot_032326_213949-jpg.jpg)
+![Dressing Room](https://media.forgecdn.net/attachments/1599/282/wowscrnshot_032626_003031-jpg.jpg)
 
-![Mount Preview](https://media.forgecdn.net/attachments/1596/249/wowscrnshot_032426_002658-jpg.jpg)
+![Mount Preview](https://media.forgecdn.net/attachments/1599/283/wowscrnshot_032626_003051-jpg.jpg)
+
+![Housing Preview](https://media.forgecdn.net/attachments/1599/284/wowscrnshot_032626_003105-jpg.jpg)
 
 ### Inspect Window
 - Same design as the character panel with 3D model and 18 equipment slots
@@ -45,7 +47,7 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - PvP tab shows honor level, arena ratings, solo shuffle, RBG, and blitz ratings
 - Guild tab shows tabard, name, faction, rank, and member count
 
-![Inspect Window](https://media.forgecdn.net/attachments/1595/666/wowscrnshot_032326_135611-jpg.jpg)
+![Inspect Window](https://media.forgecdn.net/attachments/1599/281/wowscrnshot_032526_212828-jpg.jpg)
 
 ### Quality of Life
 - Combat lockout option to prevent Character window from opening mid-fight
