@@ -7,8 +7,27 @@ local SOCKET_SIZE  = 12
 
 ns.slotButtons = {}
 
+-- Ensure native CharacterFrame is loaded so we can reparent its slot buttons
+if C_AddOns and C_AddOns.LoadAddOn then
+    C_AddOns.LoadAddOn("Blizzard_CharacterFrame")
+elseif LoadAddOn then
+    LoadAddOn("Blizzard_CharacterFrame")
+end
+
 local function CreateSlotButton(parent, slotInfo, index, anchorPoint, xOff, yOff)
-    local btn = CreateFrame("Button", "ModernCharacterUISlot" .. slotInfo.id, parent)
+    -- Reparent the native Blizzard slot button for secure click handling
+    -- (enchants, weapon oils, armor kits, drag-and-drop all work natively)
+    local nativeName = "Character" .. slotInfo.name
+    local btn = _G[nativeName]
+
+    if not btn then
+        -- Fallback: create our own if native doesn't exist
+        btn = CreateFrame("Button", "ModernCharacterUISlot" .. slotInfo.id, parent)
+    else
+        btn:SetParent(parent)
+    end
+
+    btn:ClearAllPoints()
     btn:SetSize(SLOT_SIZE, SLOT_SIZE)
 
     local yPos = -(index - 1) * (SLOT_SIZE + SLOT_SPACING) + (yOff or 0)
@@ -24,14 +43,28 @@ local function CreateSlotButton(parent, slotInfo, index, anchorPoint, xOff, yOff
     btn.slotName = slotInfo.name
     btn.slotLabel = slotInfo.label
 
+    -- Hide native visual elements we replace with our own
+    if btn.NormalTexture then btn.NormalTexture:SetAlpha(0) end
+    if btn.IconBorder then btn.IconBorder:SetAlpha(0) end
+    if btn.IconOverlay2 then btn.IconOverlay2:SetAlpha(0) end
+
     local bg = btn:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints()
     bg:SetColorTexture(0.08, 0.08, 0.1, 0.9)
 
-    local icon = btn:CreateTexture(nil, "ARTWORK")
-    icon:SetPoint("TOPLEFT", 3, -3)
-    icon:SetPoint("BOTTOMRIGHT", -3, 3)
-    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    -- Use the native icon if available, otherwise create our own
+    local icon = btn.icon or btn.Icon
+    if icon then
+        icon:ClearAllPoints()
+        icon:SetPoint("TOPLEFT", 3, -3)
+        icon:SetPoint("BOTTOMRIGHT", -3, 3)
+        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    else
+        icon = btn:CreateTexture(nil, "ARTWORK")
+        icon:SetPoint("TOPLEFT", 3, -3)
+        icon:SetPoint("BOTTOMRIGHT", -3, 3)
+        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    end
     btn.icon = icon
 
     local bSize = 2
@@ -177,48 +210,71 @@ local function CreateSlotButton(parent, slotInfo, index, anchorPoint, xOff, yOff
         btn.sockets[i] = gem
     end
 
-    local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetAllPoints()
-    highlight:SetColorTexture(1, 1, 1, 0.12)
+    if not btn:GetHighlightTexture() then
+        local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
+        highlight:SetAllPoints()
+        highlight:SetColorTexture(1, 1, 1, 0.12)
+    end
 
-    btn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        local hasItem = GameTooltip:SetInventoryItem("player", self.slotID)
-        if not hasItem then
-            GameTooltip:SetText(self.slotLabel, 1, 1, 1)
-        end
-        GameTooltip:Show()
-    end)
-
-    btn:SetScript("OnLeave", function()
-        GameTooltip:Hide()
-    end)
-
-    btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    btn:SetScript("OnClick", function(self, button)
-        if IsModifiedClick("EXPANDITEM") then
-            if SocketInventoryItem then
-                SocketInventoryItem(self.slotID)
+    -- Use HookScript so we don't override the native button's tooltip/click behavior
+    if not btn._mcuTooltipHooked then
+        btn._mcuTooltipHooked = true
+        btn:HookScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            local hasItem = GameTooltip:SetInventoryItem("player", self.slotID)
+            if not hasItem then
+                GameTooltip:SetText(self.slotLabel, 1, 1, 1)
             end
-            return
-        end
-        if IsModifiedClick("CHATLINK") then
-            local itemLink = GetInventoryItemLink("player", self.slotID)
-            if itemLink then
-                ChatEdit_InsertLink(itemLink)
-            end
-            return
-        end
-        if button == "RightButton" then
-            UseInventoryItem(self.slotID)
-            return
-        end
-        PickupInventoryItem(self.slotID)
-    end)
+            GameTooltip:Show()
+        end)
+        btn:HookScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+    end
 
-    btn:SetScript("OnReceiveDrag", function(self)
-        PickupInventoryItem(self.slotID)
-    end)
+    -- Native Blizzard button handles OnClick, OnReceiveDrag, and all
+    -- secure actions (enchants, weapon oils, armor kits, item equip/pickup).
+    -- We only hook OnEnter/OnLeave for our enhanced tooltips above.
+
+    -- Hook the native search/context overlays to fade our custom elements
+    -- when an enchant or targeting spell is active
+    if not btn._mcuOverlayHooked then
+        btn._mcuOverlayHooked = true
+        local function UpdateOverlayAlpha()
+            local isTargeting = false
+            if btn.searchOverlay and btn.searchOverlay:IsShown() then isTargeting = true end
+            if btn.ItemContextOverlay and btn.ItemContextOverlay:IsShown() then isTargeting = true end
+            local alpha = isTargeting and 0.2 or 1
+            if btn.ilvlText then btn.ilvlText:SetAlpha(alpha) end
+            if btn.upgradeText then btn.upgradeText:SetAlpha(alpha) end
+            if btn.enchantWarning then btn.enchantWarning:SetAlpha(alpha) end
+            for i = 1, MAX_SOCKETS do
+                if btn.sockets and btn.sockets[i] then btn.sockets[i]:SetAlpha(alpha) end
+            end
+            for _, t in ipairs(btn.borderTextures) do t:SetAlpha(alpha) end
+            if btn.overlays then
+                for _, o in pairs(btn.overlays) do
+                    if o.SetAlpha then o:SetAlpha(alpha) end
+                end
+            end
+        end
+        if btn.searchOverlay then
+            hooksecurefunc(btn.searchOverlay, "Show", UpdateOverlayAlpha)
+            hooksecurefunc(btn.searchOverlay, "Hide", UpdateOverlayAlpha)
+            hooksecurefunc(btn.searchOverlay, "SetShown", UpdateOverlayAlpha)
+        end
+        if btn.ItemContextOverlay then
+            hooksecurefunc(btn.ItemContextOverlay, "Show", function()
+                btn.ItemContextOverlay:SetAlpha(0)
+                UpdateOverlayAlpha()
+            end)
+            hooksecurefunc(btn.ItemContextOverlay, "Hide", UpdateOverlayAlpha)
+            hooksecurefunc(btn.ItemContextOverlay, "SetShown", function()
+                btn.ItemContextOverlay:SetAlpha(0)
+                UpdateOverlayAlpha()
+            end)
+        end
+    end
 
     ns.slotButtons[slotInfo.id] = btn
     return btn
