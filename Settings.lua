@@ -100,6 +100,7 @@ function MCU:GetOptions()
                 end,
                 set = function(_, value)
                     self.db.global.overrideLegacyPanel = value
+                    MCU:Print("Please type /reload for this change to take effect.")
                 end,
             },
             overrideDressingRoom = {

@@ -7,25 +7,26 @@ local SOCKET_SIZE  = 12
 
 ns.slotButtons = {}
 
--- Ensure native CharacterFrame is loaded so we can reparent its slot buttons
-if C_AddOns and C_AddOns.LoadAddOn then
-    C_AddOns.LoadAddOn("Blizzard_CharacterFrame")
-elseif LoadAddOn then
-    LoadAddOn("Blizzard_CharacterFrame")
-end
-
 local function CreateSlotButton(parent, slotInfo, index, anchorPoint, xOff, yOff)
-    -- Reparent the native Blizzard slot button for secure click handling
-    -- (enchants, weapon oils, armor kits, drag-and-drop all work natively)
+    -- Always use native Blizzard slot buttons (secure click handling for
+    -- enchants, weapon oils, armor kits, flyout menus, drag-and-drop)
+    if not ns._charFrameLoaded then
+        ns._charFrameLoaded = true
+        if C_AddOns and C_AddOns.LoadAddOn then
+            C_AddOns.LoadAddOn("Blizzard_CharacterFrame")
+        elseif LoadAddOn then
+            LoadAddOn("Blizzard_CharacterFrame")
+        end
+    end
+
     local nativeName = "Character" .. slotInfo.name
     local btn = _G[nativeName]
+    if not btn then return nil end
 
-    if not btn then
-        -- Fallback: create our own if native doesn't exist
-        btn = CreateFrame("Button", "ModernCharacterUISlot" .. slotInfo.id, parent)
-    else
-        btn:SetParent(parent)
+    if not btn._mcuOriginalParent then
+        btn._mcuOriginalParent = btn:GetParent()
     end
+    btn:SetParent(parent)
 
     btn:ClearAllPoints()
     btn:SetSize(SLOT_SIZE, SLOT_SIZE)
@@ -43,19 +44,19 @@ local function CreateSlotButton(parent, slotInfo, index, anchorPoint, xOff, yOff
     btn.slotName = slotInfo.name
     btn.slotLabel = slotInfo.label
 
-    -- Hide native visual elements we replace with our own
-    if btn.NormalTexture then btn.NormalTexture:SetAlpha(0) end
-    if btn:GetNormalTexture() then btn:GetNormalTexture():SetAlpha(0) end
-    if btn:GetPushedTexture() then btn:GetPushedTexture():SetAlpha(0) end
-    if btn.IconBorder then btn.IconBorder:SetAlpha(0) end
-    if btn.IconOverlay2 then btn.IconOverlay2:SetAlpha(0) end
-    -- Hide any slot background/border textures from the native button
-    local regions = { btn:GetRegions() }
-    for _, region in ipairs(regions) do
-        if region:IsObjectType("Texture") and region ~= btn.icon and region ~= btn.Icon then
-            local drawLayer = region:GetDrawLayer()
-            if drawLayer == "BACKGROUND" or drawLayer == "BORDER" then
-                region:SetAlpha(0)
+    if btn._mcuOriginalParent then
+        if btn.NormalTexture then btn.NormalTexture:SetAlpha(0) end
+        if btn:GetNormalTexture() then btn:GetNormalTexture():SetAlpha(0) end
+        if btn:GetPushedTexture() then btn:GetPushedTexture():SetAlpha(0) end
+        if btn.IconBorder then btn.IconBorder:SetAlpha(0) end
+        if btn.IconOverlay2 then btn.IconOverlay2:SetAlpha(0) end
+        local regions = { btn:GetRegions() }
+        for _, region in ipairs(regions) do
+            if region:IsObjectType("Texture") and region ~= btn.icon and region ~= btn.Icon then
+                local drawLayer = region:GetDrawLayer()
+                if drawLayer == "BACKGROUND" or drawLayer == "BORDER" then
+                    region:SetAlpha(0)
+                end
             end
         end
     end
@@ -301,8 +302,10 @@ local function BuildSlots()
         local GAP = 5
         local xOff = (i - 1) * (SLOT_SIZE + GAP)
         local btn = CreateSlotButton(ns.bottomSlots, info, 1, "BOTTOMLEFT", xOff, 0)
-        btn:ClearAllPoints()
-        btn:SetPoint("BOTTOMLEFT", ns.bottomSlots, "BOTTOMLEFT", xOff, 0)
+        if btn then
+            btn:ClearAllPoints()
+            btn:SetPoint("BOTTOMLEFT", ns.bottomSlots, "BOTTOMLEFT", xOff, 0)
+        end
     end
 end
 
@@ -495,4 +498,10 @@ function ns:UpdateAllSlots()
     end
 end
 
-BuildSlots()
+-- Called from MainFrame PLAYER_LOGIN when settings are available
+function ns:BuildSlots()
+    if not (ns.db and ns.db.global and ns.db.global.overrideLegacyPanel) then
+        return
+    end
+    BuildSlots()
+end

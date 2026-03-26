@@ -92,6 +92,22 @@ bottomSlots:SetSize((ns.SLOT_SIZE * 2) + ns.SLOT_SPACING, ns.SLOT_SIZE)
 bottomSlots:SetPoint("BOTTOM", modelBg, "BOTTOM", 0, 48)
 ns.bottomSlots = bottomSlots
 
+-- Equipment flyout settings (Alt-hover shows equippable items for slot)
+local flyoutSettings = {
+    onClickFunc = PaperDollFrameItemFlyoutButton_OnClick,
+    getItemsFunc = PaperDollFrameItemFlyout_GetItems,
+    postGetItemsFunc = PaperDollFrameItemFlyout_PostGetItems,
+    hasPopouts = true,
+    parent = frame,
+    anchorX = 0,
+    anchorY = -3,
+    verticalAnchorX = 0,
+    verticalAnchorY = 0,
+}
+leftColumn.flyoutSettings = flyoutSettings
+rightColumn.flyoutSettings = flyoutSettings
+bottomSlots.flyoutSettings = flyoutSettings
+
 local TAB_HEIGHT = 24
 
 local tabBar = CreateFrame("Frame", nil, frame)
@@ -158,6 +174,9 @@ local function SetActiveTab(tabName)
         statsTab.indicator:Show()
         equipTab.label:SetTextColor(0.6, 0.6, 0.6, 1)
         equipTab.indicator:Hide()
+        if EquipmentFlyoutPopoutButton_HideAll then
+            EquipmentFlyoutPopoutButton_HideAll()
+        end
     else
         statsContainer:Hide()
         equipContainer:Show()
@@ -166,6 +185,9 @@ local function SetActiveTab(tabName)
         equipTab.label:SetTextColor(1, 0.82, 0, 1)
         equipTab.indicator:Show()
         if ns.UpdateEquipmentSets then ns:UpdateEquipmentSets() end
+        if EquipmentFlyoutPopoutButton_ShowAll then
+            EquipmentFlyoutPopoutButton_ShowAll()
+        end
     end
 end
 statsTab:SetScript("OnClick", function() SetActiveTab("stats") end)
@@ -255,6 +277,9 @@ frame:SetScript("OnHide", function(self)
     for _, ev in ipairs(GLOBAL_EVENTS) do
         self:UnregisterEvent(ev)
     end
+    if EquipmentFlyoutPopoutButton_HideAll then
+        EquipmentFlyoutPopoutButton_HideAll()
+    end
     if ns._SetMainTab then ns._SetMainTab("character") end
     PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
 end)
@@ -266,6 +291,7 @@ frame:SetScript("OnEvent", function(self, event, arg1, ...)
             self:ClearAllPoints()
             self:SetPoint(pos[1], UIParent, pos[2], pos[3], pos[4])
         end
+        if ns.BuildSlots then ns:BuildSlots() end
         ns:ApplyFrameScale()
         ns:ApplySlotFontSize()
         ns:ApplySlotOverlayStyle()
