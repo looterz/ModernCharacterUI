@@ -71,13 +71,14 @@ local function PreviewMount(mountID)
         C_MountJournal.GetMountInfoExtraByID(mountID)
     if not creatureDisplayID or creatureDisplayID == 0 then return end
 
-    -- Show mount collection on the right sidebar
     ns:ShowMountCollection(mountID)
 
-    -- Clear the player actor immediately to prevent ghost models from
-    -- inspect outfit timers that may still be pending
     local earlyScene = GetModelScene()
     if earlyScene then
+        if earlyScene._furnitureActor then
+            earlyScene._furnitureActor:ClearModel()
+            earlyScene._furnitureActor = nil
+        end
         local earlyActor = earlyScene:GetPlayerActor()
         if earlyActor then
             earlyActor:ClearModel()
@@ -85,21 +86,17 @@ local function PreviewMount(mountID)
         end
     end
 
-    -- Switch to two-column layout: hide left sidebar, expand preview to fill
     local outfitCollection = MCUDressingRoomFrame.OutfitCollection
     local charPreview = MCUDressingRoomFrame.CharacterPreview
     local wardrobeCollection = MCUDressingRoomFrame.WardrobeCollection
     if outfitCollection and charPreview and wardrobeCollection then
         outfitCollection:Hide()
-        -- Break the anchor chain: anchor collection to the frame directly
         wardrobeCollection:ClearAllPoints()
         wardrobeCollection:SetPoint("TOPRIGHT", MCUDressingRoomFrame, "TOPRIGHT", -2, -21)
-        -- Preview fills from left edge to collection
         charPreview:ClearAllPoints()
         charPreview:SetPoint("TOPLEFT", MCUDressingRoomFrame, "TOPLEFT", 2, -21)
         charPreview:SetPoint("TOPRIGHT", wardrobeCollection, "TOPLEFT", 0, 0)
         charPreview:SetHeight(860)
-        -- Stretch the background texture to fill the wider area
         if charPreview.Background then
             charPreview.Background:ClearAllPoints()
             charPreview.Background:SetAllPoints(charPreview)
@@ -110,14 +107,12 @@ local function PreviewMount(mountID)
         local modelScene = GetModelScene()
         if not modelScene then return end
 
-        -- Hide the player actor so only the mount is visible
         local playerActor = modelScene:GetPlayerActor()
         if playerActor then
             playerActor:ClearModel()
             playerActor:Hide()
         end
 
-        -- Hide equipment slots and show mount name during mount preview
         local charPreview = MCUDressingRoomFrame.CharacterPreview
         if charPreview then
             if charPreview.drSlotFrames then
@@ -134,7 +129,6 @@ local function PreviewMount(mountID)
             local mountName = C_MountJournal.GetMountInfoByID(mountID)
             charPreview.MountNameLabel:SetText(mountName or "")
             charPreview.MountNameLabel:Show()
-            -- Move camera controls below the mount name
             local controlFrame = charPreview.ModelScene and charPreview.ModelScene.ControlFrame
             if controlFrame then
                 controlFrame:ClearAllPoints()
@@ -142,18 +136,15 @@ local function PreviewMount(mountID)
             end
         end
 
-        -- Transition to the mount's own scene for proper camera framing
         modelScene:SetViewInsets(0, 0, 0, 0)
         local forceEvenIfSame = true
         modelScene:TransitionToModelSceneID(modelSceneID, CAMERA_TRANSITION_TYPE_IMMEDIATE, CAMERA_MODIFICATION_TYPE_DISCARD, forceEvenIfSame)
 
-        -- Clean up any previous mount actor we created
         if modelScene._mountActor then
             modelScene._mountActor:ClearModel()
             modelScene._mountActor = nil
         end
 
-        -- Create a new actor for the mount
         local mountActor = modelScene:CreateActor()
         if not mountActor then return end
         modelScene._mountActor = mountActor
@@ -173,7 +164,6 @@ local function PreviewMount(mountID)
             mountActor:SetSpellVisualKit(spellVisualKitID)
         end
 
-        -- Extend zoom range for large mounts
         local camera = modelScene:GetActiveCamera()
         if camera then
             camera:SetMaxZoomDistance(camera:GetMaxZoomDistance() * 2.5)
@@ -185,9 +175,6 @@ function ns:PreviewMount(mountID)
     PreviewMount(mountID)
 end
 
----------------------------------------------------------------------------
--- Mount Collection Grid (model-based, paged — matches item collection)
----------------------------------------------------------------------------
 local mountCollectionFrame = nil
 local mountSearchBox = nil
 local currentPreviewMountID = nil
@@ -241,7 +228,6 @@ local function UpdateMountModels()
             end
             model.mountData = entry
 
-            -- Border
             if not entry.isCollected then
                 model.Border:SetAtlas("transmog-wardrobe-border-uncollected")
             elseif not entry.isUsable then
@@ -250,10 +236,8 @@ local function UpdateMountModels()
                 model.Border:SetAtlas("transmog-wardrobe-border-collected")
             end
 
-            -- Highlight the currently previewed mount
             model.TransmogStateTexture:SetShown(entry.mountID == currentPreviewMountID)
 
-            -- Favorite
             if model.Favorite then
                 model.Favorite.Icon:SetShown(entry.isFavorite or false)
             end
@@ -302,7 +286,6 @@ local function CreateMountCollectionFrame()
     frame:Hide()
     frame.mountList = {}
 
-    -- Search box
     local search = CreateFrame("EditBox", nil, frame, "SearchBoxTemplate")
     search:SetSize(260, 20)
     search:SetPoint("TOP", 0, -110)
@@ -313,7 +296,6 @@ local function CreateMountCollectionFrame()
     end)
     mountSearchBox = search
 
-    -- Paging frame (reuse the same mixin pattern)
     local pagingFrame = CreateFrame("Frame", nil, frame)
     pagingFrame:SetSize(120, 28)
     pagingFrame:SetPoint("BOTTOM", 0, 8)
@@ -353,10 +335,8 @@ local function CreateMountCollectionFrame()
 
     frame.PagingFrame = pagingFrame
 
-    -- OnPageChanged triggers model refresh
     frame.OnPageChanged = function() UpdateMountModels() end
 
-    -- Create model grid
     frame.Models = {}
     local gridWidth = MOUNT_NUM_COLS * MOUNT_MODEL_WIDTH + (MOUNT_NUM_COLS - 1) * MOUNT_COL_GAP
     local gridHeight = MOUNT_NUM_ROWS * MOUNT_MODEL_HEIGHT + (MOUNT_NUM_ROWS - 1) * MOUNT_ROW_GAP
@@ -376,7 +356,6 @@ local function CreateMountCollectionFrame()
                 gridOffsetY - row * (MOUNT_MODEL_HEIGHT + MOUNT_ROW_GAP))
             model:Hide()
 
-            -- Override click to preview mount
             model:SetScript("OnMouseDown", function(self, button)
                 if button == "LeftButton" and self.mountData then
                     currentPreviewMountID = self.mountData.mountID
@@ -384,7 +363,6 @@ local function CreateMountCollectionFrame()
                 end
             end)
 
-            -- Override tooltip
             model:SetScript("OnEnter", function(self)
                 if not self.mountData then return end
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -408,13 +386,11 @@ local function CreateMountCollectionFrame()
         end
     end
 
-    -- Events
     frame:RegisterEvent("MOUNT_JOURNAL_SEARCH_UPDATED")
     frame:RegisterEvent("COMPANION_LEARNED")
     frame:RegisterEvent("COMPANION_UNLEARNED")
     frame:SetScript("OnEvent", function() RefreshMountCollection() end)
 
-    -- Mouse wheel paging
     frame:EnableMouseWheel(true)
     frame:SetScript("OnMouseWheel", function(_, delta)
         if delta > 0 then pagingFrame:PreviousPage() else pagingFrame:NextPage() end
@@ -433,12 +409,11 @@ function ns:ShowMountCollection(mountID)
     currentPreviewMountID = mountID
 
     if not alreadyShowing then
-        -- First open: reset filters to show all mounts
+        if ns.HideFurnitureCollection then ns:HideFurnitureCollection(true) end
         C_MountJournal.SetDefaultFilters()
         C_MountJournal.SetSearch("")
         if mountSearchBox then mountSearchBox:SetText("") end
 
-        -- Hide the normal appearances grid
         if MCUDR_AppearancesFrame then
             MCUDR_AppearancesFrame:Hide()
         end
@@ -452,7 +427,7 @@ function ns:ShowMountCollection(mountID)
     end
 end
 
-function ns:HideMountCollection()
+function ns:HideMountCollection(skipLayoutRestore)
     if mountCollectionFrame then
         mountCollectionFrame:Hide()
         if mountSearchBox then
@@ -462,32 +437,738 @@ function ns:HideMountCollection()
     end
     currentPreviewMountID = nil
 
-    -- Restore three-column layout
-    if MCUDressingRoomFrame then
-        local outfitCollection = MCUDressingRoomFrame.OutfitCollection
-        local charPreview = MCUDressingRoomFrame.CharacterPreview
-        local wardrobeCollection = MCUDressingRoomFrame.WardrobeCollection
-        if outfitCollection and charPreview then
-            outfitCollection:Show()
-            charPreview:ClearAllPoints()
-            charPreview:SetPoint("TOPLEFT", outfitCollection, "TOPRIGHT", 0, 0)
-            charPreview:SetSize(658, 860)
-            -- Restore background to atlas size anchored at TOPLEFT
-            if charPreview.Background then
-                charPreview.Background:ClearAllPoints()
-                charPreview.Background:SetPoint("TOPLEFT")
+    if not skipLayoutRestore then
+        if MCUDressingRoomFrame then
+            local outfitCollection = MCUDressingRoomFrame.OutfitCollection
+            local charPreview = MCUDressingRoomFrame.CharacterPreview
+            local wardrobeCollection = MCUDressingRoomFrame.WardrobeCollection
+            if outfitCollection and charPreview then
+                outfitCollection:Show()
+                charPreview:ClearAllPoints()
+                charPreview:SetPoint("TOPLEFT", outfitCollection, "TOPRIGHT", 0, 0)
+                charPreview:SetSize(658, 860)
+                if charPreview.Background then
+                    charPreview.Background:ClearAllPoints()
+                    charPreview.Background:SetPoint("TOPLEFT")
+                end
+                if wardrobeCollection then
+                    wardrobeCollection:ClearAllPoints()
+                    wardrobeCollection:SetPoint("TOPLEFT", charPreview, "TOPRIGHT", 0, 0)
+                end
             end
-            if wardrobeCollection then
-                wardrobeCollection:ClearAllPoints()
-                wardrobeCollection:SetPoint("TOPLEFT", charPreview, "TOPRIGHT", 0, 0)
+        end
+
+        if MCUDR_AppearancesFrame and MCUDressingRoomFrame and MCUDressingRoomFrame:IsShown() then
+            MCUDR_AppearancesFrame:Show()
+        end
+    end
+end
+
+local FURNITURE_SIZE_SCENE = {
+    [65] = 1333,  -- Tiny
+    [66] = 1334,  -- Small
+    [67] = 1335,  -- Medium
+    [68] = 1336,  -- Large
+    [69] = 1337,  -- Huge
+}
+local FURNITURE_DEFAULT_SCENE = 1317
+
+local function GetFurnitureInfoFromLink(link)
+    if not link or not C_HousingCatalog or not C_HousingCatalog.GetCatalogEntryInfoByItem then return nil end
+    local ok, info = pcall(C_HousingCatalog.GetCatalogEntryInfoByItem, link, true)
+    if ok and info and info.entryID then
+        return info
+    end
+    local linkType, linkOptions = LinkUtil.ExtractLink(link)
+    local linkID = linkOptions and LinkUtil.SplitLinkOptions(linkOptions)
+    linkID = tonumber(linkID)
+    if linkID then
+        ok, info = pcall(C_HousingCatalog.GetCatalogEntryInfoByItem, linkID, true)
+        if ok and info and info.entryID then
+            return info
+        end
+    end
+    if link then
+        local itemName = (linkID and C_Item.GetItemNameByID(linkID))
+            or (linkID and select(1, C_Item.GetItemInfo(linkID)))
+            or link:match("%|h%[(.-)%]%|h")
+        if itemName then
+            local furnitureName = itemName:match("^Formula:%s*(.+)")
+                or itemName:match("^Recipe:%s*(.+)")
+                or itemName:match("^Pattern:%s*(.+)")
+                or itemName:match("^Schematic:%s*(.+)")
+                or itemName:match("^Design:%s*(.+)")
+                or itemName:match("^Blueprint:%s*(.+)")
+            if furnitureName then
+                ok, info = pcall(C_HousingCatalog.GetCatalogEntryInfoByItem, furnitureName, true)
+                if ok and info and info.entryID then
+                    return info
+                end
             end
         end
     end
+    return nil
+end
 
-    -- Restore the normal appearances grid
-    if MCUDR_AppearancesFrame and MCUDressingRoomFrame and MCUDressingRoomFrame:IsShown() then
-        MCUDR_AppearancesFrame:Show()
+local function PreviewFurniture(entryID)
+    ShowOurDressingRoom()
+    if not entryID or not C_HousingCatalog then return end
+
+    local info = C_HousingCatalog.GetCatalogEntryInfo(entryID)
+    if not info then return end
+
+    ns:ShowFurnitureCollection(entryID)
+
+    local alreadyInFurnitureMode = furnitureCollectionFrame and furnitureCollectionFrame:IsShown()
+        and MCUDressingRoomFrame.OutfitCollection and not MCUDressingRoomFrame.OutfitCollection:IsShown()
+    if alreadyInFurnitureMode then
+        C_Timer.After(0.3, function()
+            local modelScene = GetModelScene()
+            if not modelScene then return end
+
+            if modelScene._furnitureActor then
+                modelScene._furnitureActor:ClearModel()
+                modelScene._furnitureActor = nil
+            end
+
+            local sceneID = info.uiModelSceneID
+            if not sceneID or sceneID == 0 then
+                sceneID = info.size and FURNITURE_SIZE_SCENE[info.size] or FURNITURE_DEFAULT_SCENE
+            end
+            modelScene:TransitionToModelSceneID(sceneID, CAMERA_TRANSITION_TYPE_IMMEDIATE, CAMERA_MODIFICATION_TYPE_DISCARD, true)
+
+            local cp = MCUDressingRoomFrame.CharacterPreview
+            if cp and cp.FurnitureIconFallback then cp.FurnitureIconFallback:Hide() end
+
+            if info.asset then
+                local actor = modelScene:CreateActor()
+                if actor then
+                    modelScene._furnitureActor = actor
+                    actor:SetModelByFileID(info.asset)
+                    if actor.SetPreferModelCollisionBounds then
+                        actor:SetPreferModelCollisionBounds(true)
+                    end
+                    actor:SetUseCenterForOrigin(true, true, true)
+                end
+            elseif cp and cp.FurnitureIconFallback then
+                if info.iconAtlas then
+                    cp.FurnitureIconFallback:SetAtlas(info.iconAtlas)
+                elseif info.iconTexture then
+                    cp.FurnitureIconFallback:SetTexture(info.iconTexture)
+                end
+                cp.FurnitureIconFallback:Show()
+            end
+
+            if cp and cp.FurnitureNameLabel then
+                local nameColor = ITEM_QUALITY_COLORS[info.quality or 1] or ITEM_QUALITY_COLORS[1]
+                cp.FurnitureNameLabel:SetTextColor(nameColor.r, nameColor.g, nameColor.b, 1)
+                cp.FurnitureNameLabel:SetText(info.name or "")
+            end
+
+            local camera = modelScene:GetActiveCamera()
+            if camera then
+                camera:SetMaxZoomDistance(camera:GetMaxZoomDistance() * 2.5)
+            end
+        end)
+        return
     end
+
+    local earlyScene = GetModelScene()
+    if earlyScene then
+        if earlyScene._mountActor then
+            earlyScene._mountActor:ClearModel()
+            earlyScene._mountActor = nil
+        end
+        if earlyScene._furnitureActor then
+            earlyScene._furnitureActor:ClearModel()
+            earlyScene._furnitureActor = nil
+        end
+        local earlyActor = earlyScene:GetPlayerActor()
+        if earlyActor then
+            earlyActor:ClearModel()
+            earlyActor:Hide()
+        end
+    end
+
+    local outfitCollection = MCUDressingRoomFrame.OutfitCollection
+    local charPreview = MCUDressingRoomFrame.CharacterPreview
+    local wardrobeCollection = MCUDressingRoomFrame.WardrobeCollection
+    if outfitCollection and charPreview and wardrobeCollection then
+        outfitCollection:Hide()
+        wardrobeCollection:ClearAllPoints()
+        wardrobeCollection:SetPoint("TOPRIGHT", MCUDressingRoomFrame, "TOPRIGHT", -2, -21)
+        charPreview:ClearAllPoints()
+        charPreview:SetPoint("TOPLEFT", MCUDressingRoomFrame, "TOPLEFT", 2, -21)
+        charPreview:SetPoint("TOPRIGHT", wardrobeCollection, "TOPLEFT", 0, 0)
+        charPreview:SetHeight(860)
+        if charPreview.Background then
+            charPreview.Background:ClearAllPoints()
+            charPreview.Background:SetAllPoints(charPreview)
+        end
+    end
+
+    C_Timer.After(0.3, function()
+        local modelScene = GetModelScene()
+        if not modelScene then return end
+
+        local playerActor = modelScene:GetPlayerActor()
+        if playerActor then
+            playerActor:ClearModel()
+            playerActor:Hide()
+        end
+
+        local cp = MCUDressingRoomFrame.CharacterPreview
+        if cp then
+            if cp.drSlotFrames then
+                for _, btn in pairs(cp.drSlotFrames) do btn:Hide() end
+            end
+            if not cp.FurnitureNameLabel then
+                local label = cp:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+                label:SetPoint("TOP", cp, "TOP", 0, -12)
+                cp.FurnitureNameLabel = label
+            end
+            local nameColor = ITEM_QUALITY_COLORS[info.quality or 1] or ITEM_QUALITY_COLORS[1]
+            cp.FurnitureNameLabel:SetTextColor(nameColor.r, nameColor.g, nameColor.b, 1)
+            cp.FurnitureNameLabel:SetText(info.name or "")
+            cp.FurnitureNameLabel:Show()
+            if cp.MountNameLabel then cp.MountNameLabel:Hide() end
+            local controlFrame = cp.ModelScene and cp.ModelScene.ControlFrame
+            if controlFrame then
+                controlFrame:ClearAllPoints()
+                controlFrame:SetPoint("TOP", cp.FurnitureNameLabel, "BOTTOM", 0, -4)
+            end
+        end
+
+        local sceneID = info.uiModelSceneID
+        if not sceneID or sceneID == 0 then
+            sceneID = info.size and FURNITURE_SIZE_SCENE[info.size] or FURNITURE_DEFAULT_SCENE
+        end
+
+        modelScene:SetViewInsets(0, 0, 0, 0)
+        modelScene:TransitionToModelSceneID(sceneID, CAMERA_TRANSITION_TYPE_IMMEDIATE, CAMERA_MODIFICATION_TYPE_DISCARD, true)
+
+        if modelScene._furnitureActor then
+            modelScene._furnitureActor:ClearModel()
+            modelScene._furnitureActor = nil
+        end
+
+        if cp then
+            if not cp.FurnitureIconFallback then
+                local fb = cp:CreateTexture(nil, "ARTWORK")
+                fb:SetSize(256, 256)
+                fb:SetPoint("CENTER", cp, "CENTER", 0, 0)
+                fb:Hide()
+                cp.FurnitureIconFallback = fb
+            end
+        end
+
+        if info.asset then
+            if cp and cp.FurnitureIconFallback then cp.FurnitureIconFallback:Hide() end
+            local actor = modelScene:CreateActor()
+            if actor then
+                modelScene._furnitureActor = actor
+                actor:SetModelByFileID(info.asset)
+                if actor.SetPreferModelCollisionBounds then
+                    actor:SetPreferModelCollisionBounds(true)
+                end
+                actor:SetUseCenterForOrigin(true, true, true)
+            end
+        else
+            if cp and cp.FurnitureIconFallback then
+                if info.iconAtlas then
+                    cp.FurnitureIconFallback:SetAtlas(info.iconAtlas)
+                elseif info.iconTexture then
+                    cp.FurnitureIconFallback:SetTexture(info.iconTexture)
+                end
+                cp.FurnitureIconFallback:Show()
+            end
+        end
+
+        local camera = modelScene:GetActiveCamera()
+        if camera then
+            camera:SetMaxZoomDistance(camera:GetMaxZoomDistance() * 2.5)
+        end
+    end)
+end
+
+function ns:PreviewFurniture(entryID)
+    PreviewFurniture(entryID)
+end
+
+local furnitureCollectionFrame = nil
+local furnitureSearchBox = nil
+local currentPreviewFurnitureKey = nil
+local furnitureCatalogSearcher = nil
+
+-- entryID is a table type, so == fails between different instances.
+-- We use the entry's name as a stable key since itemID may be nil.
+local function FurnitureKey(entryIDOrInfo)
+    if entryIDOrInfo == nil then return nil end
+    if type(entryIDOrInfo) == "table" and entryIDOrInfo.name then
+        return entryIDOrInfo.name
+    end
+    if C_HousingCatalog and C_HousingCatalog.GetCatalogEntryInfo then
+        local info = C_HousingCatalog.GetCatalogEntryInfo(entryIDOrInfo)
+        if info and info.name then
+            return info.name
+        end
+    end
+    return tostring(entryIDOrInfo)
+end
+
+local RefreshFurnitureCollection
+local RunFurnitureSearch
+local UpdateFurnitureModels
+
+local FURN_NUM_ROWS = 5
+local FURN_NUM_COLS = 6
+local FURN_PAGE_SIZE = FURN_NUM_ROWS * FURN_NUM_COLS
+local FURN_MODEL_WIDTH = 78
+local FURN_MODEL_HEIGHT = 104
+local FURN_COL_GAP = 16
+local FURN_ROW_GAP = 24
+
+local FURNITURE_SIZE_NAMES = {
+    [65] = "Tiny", [66] = "Small", [67] = "Medium", [68] = "Large", [69] = "Huge",
+}
+
+local function EnsureFurnitureSearcher()
+    if furnitureCatalogSearcher then return furnitureCatalogSearcher end
+    if not C_HousingCatalog or not C_HousingCatalog.CreateCatalogSearcher then return nil end
+    furnitureCatalogSearcher = C_HousingCatalog.CreateCatalogSearcher()
+    if furnitureCatalogSearcher then
+        furnitureCatalogSearcher:SetOwnedOnly(false)
+        furnitureCatalogSearcher:SetAutoUpdateOnParamChanges(false)
+        if Enum.HouseEditorMode and furnitureCatalogSearcher.SetEditorModeContext then
+            furnitureCatalogSearcher:SetEditorModeContext(Enum.HouseEditorMode.BasicDecor)
+        end
+        furnitureCatalogSearcher:SetResultsUpdatedCallback(function()
+            if furnitureCollectionFrame and furnitureCollectionFrame:IsShown() then
+                RefreshFurnitureCollection()
+                if not currentPreviewFurnitureKey and furnitureCollectionFrame.furnitureList
+                   and #furnitureCollectionFrame.furnitureList > 0 then
+                    local firstEntry = furnitureCollectionFrame.furnitureList[1]
+                    PreviewFurniture(firstEntry.entryID)
+                end
+            end
+        end)
+    end
+    return furnitureCatalogSearcher
+end
+
+RunFurnitureSearch = function()
+    local searcher = EnsureFurnitureSearcher()
+    if not searcher then return end
+
+    local searchText = furnitureSearchBox and furnitureSearchBox:GetText() or ""
+    searcher:SetSearchText(searchText)
+
+    if furnitureCollectionFrame and furnitureCollectionFrame.activeCategoryID and searcher.SetFilteredCategoryID then
+        searcher:SetFilteredCategoryID(furnitureCollectionFrame.activeCategoryID)
+    end
+
+    searcher:RunSearch()
+end
+
+local function BuildFurnitureListFromResults()
+    if not furnitureCatalogSearcher then return {} end
+
+    local entryIDs = furnitureCatalogSearcher:GetCatalogSearchResults()
+    -- Fallback: search results may be empty if async callback hasn't fired yet
+    if not entryIDs or #entryIDs == 0 then
+        entryIDs = furnitureCatalogSearcher:GetAllSearchItems()
+    end
+    if not entryIDs then return {} end
+
+    local list = {}
+    for _, eid in ipairs(entryIDs) do
+        local eInfo = C_HousingCatalog.GetCatalogEntryInfo(eid)
+        if eInfo then
+            list[#list + 1] = {
+                entryID = eInfo.entryID,
+                key = eInfo.name or tostring(eInfo.entryID),
+                name = eInfo.name or "",
+                asset = eInfo.asset,
+                iconTexture = eInfo.iconTexture,
+                iconAtlas = eInfo.iconAtlas,
+                size = eInfo.size,
+                quality = eInfo.quality,
+                quantity = (eInfo.quantity or 0) + (eInfo.remainingRedeemable or 0),
+                sourceText = eInfo.sourceText or "",
+                isAllowedIndoors = eInfo.isAllowedIndoors,
+                isAllowedOutdoors = eInfo.isAllowedOutdoors,
+                uiModelSceneID = eInfo.uiModelSceneID,
+            }
+        end
+    end
+
+    table.sort(list, function(a, b)
+        local aOwned = (a.quantity > 0) and 1 or 0
+        local bOwned = (b.quantity > 0) and 1 or 0
+        if aOwned ~= bOwned then return aOwned > bOwned end
+        return a.name < b.name
+    end)
+
+    return list
+end
+
+UpdateFurnitureModels = function()
+    if not furnitureCollectionFrame or not furnitureCollectionFrame:IsShown() then return end
+
+    local frame = furnitureCollectionFrame
+    local page = frame.PagingFrame:GetCurrentPage()
+    local offset = (page - 1) * FURN_PAGE_SIZE
+
+    for i = 1, FURN_PAGE_SIZE do
+        local model = frame.Models[i]
+        local entry = frame.furnitureList[offset + i]
+        if entry then
+            model:Show()
+            if model._furnitureEntryID ~= entry.entryID then
+                if entry.asset then
+                    model:SetModel(entry.asset)
+                    if model.FurnitureIcon then model.FurnitureIcon:Hide() end
+                else
+                    model:ClearModel()
+                    if not model.FurnitureIcon then
+                        local ic = model:CreateTexture(nil, "ARTWORK")
+                        ic:SetSize(48, 48)
+                        ic:SetPoint("CENTER")
+                        model.FurnitureIcon = ic
+                    end
+                    if entry.iconAtlas then
+                        model.FurnitureIcon:SetAtlas(entry.iconAtlas)
+                    elseif entry.iconTexture then
+                        model.FurnitureIcon:SetTexture(entry.iconTexture)
+                    end
+                    model.FurnitureIcon:Show()
+                end
+                model._furnitureEntryID = entry.entryID
+            end
+            model.furnitureData = entry
+
+            local isOwned = entry.quantity > 0
+            if not isOwned then
+                model.Border:SetAtlas("transmog-wardrobe-border-uncollected")
+            elseif entry.quality and ITEM_QUALITY_COLORS[entry.quality] then
+                model.Border:SetAtlas("transmog-wardrobe-border-collected")
+            else
+                model.Border:SetAtlas("transmog-wardrobe-border-collected")
+            end
+
+            model.TransmogStateTexture:SetShown(currentPreviewFurnitureKey ~= nil and entry.key == currentPreviewFurnitureKey)
+            if model.Favorite then model.Favorite.Icon:Hide() end
+            model.NewString:Hide()
+            model.NewGlow:Hide()
+            model.SlotInvalidTexture:Hide()
+            model.DisabledOverlay:SetShown(not isOwned)
+            if model.HideVisual then model.HideVisual.Icon:Hide() end
+        else
+            model:Hide()
+            model._furnitureEntryID = nil
+            model.furnitureData = nil
+        end
+    end
+end
+
+RefreshFurnitureCollection = function()
+    if not furnitureCollectionFrame or not furnitureCollectionFrame:IsShown() then return end
+    local frame = furnitureCollectionFrame
+    frame.furnitureList = BuildFurnitureListFromResults()
+    frame.PagingFrame:SetMaxPages(max(1, ceil(#frame.furnitureList / FURN_PAGE_SIZE)))
+    UpdateFurnitureModels()
+end
+
+local function NavigateToFurniture(entryID)
+    if not furnitureCollectionFrame or not entryID then return end
+    local frame = furnitureCollectionFrame
+    if not frame.furnitureList then return end
+    for i, entry in ipairs(frame.furnitureList) do
+        if entry.key == FurnitureKey(entryID) then
+            local page = ceil(i / FURN_PAGE_SIZE)
+            frame.PagingFrame:SetCurrentPage(page)
+            break
+        end
+    end
+    UpdateFurnitureModels()
+end
+
+local function CreateFurnitureCollectionFrame()
+    if furnitureCollectionFrame then return furnitureCollectionFrame end
+    local parent = MCUDressingRoomFrame.WardrobeCollection
+
+    local frame = CreateFrame("Frame", nil, parent)
+    frame:SetAllPoints()
+    frame:SetFrameLevel(parent:GetFrameLevel() + 2)
+    frame:Hide()
+    frame.furnitureList = {}
+    local allCategoryID = Constants and Constants.HousingCatalogConsts
+        and Constants.HousingCatalogConsts.HOUSING_CATALOG_ALL_CATEGORY_ID or 18
+    frame.activeCategoryID = allCategoryID
+
+    local search = CreateFrame("EditBox", nil, frame, "SearchBoxTemplate")
+    search:SetSize(260, 20)
+    search:SetPoint("TOP", 0, -110)
+    search:SetAutoFocus(false)
+    search:SetScript("OnTextChanged", function(self)
+        SearchBoxTemplate_OnTextChanged(self)
+        RunFurnitureSearch()
+    end)
+    furnitureSearchBox = search
+
+    if C_HousingCatalog.SearchCatalogCategories then
+        local catDropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+        catDropdown:SetSize(150, 22)
+        catDropdown:SetPoint("TOPLEFT", 48, -10)
+        frame.CategoryDropdown = catDropdown
+
+        catDropdown:SetupMenu(function(_dropdown, rootDescription)
+            rootDescription:SetTag("MENU_MCUDR_FURNITURE_CATEGORY")
+
+            local function IsSelected(catID)
+                return frame.activeCategoryID == catID
+            end
+            local function SetSelected(catID)
+                frame.activeCategoryID = catID
+                RunFurnitureSearch()
+            end
+
+            local categoryIDs = C_HousingCatalog.SearchCatalogCategories({ withOwnedEntriesOnly = false })
+            if categoryIDs then
+                for _, catID in ipairs(categoryIDs) do
+                    local catInfo = C_HousingCatalog.GetCatalogCategoryInfo(catID)
+                    if catInfo and catInfo.name then
+                        rootDescription:CreateRadio(catInfo.name, IsSelected, SetSelected, catID)
+                    end
+                end
+            end
+        end)
+    end
+
+    local pagingFrame = CreateFrame("Frame", nil, frame)
+    pagingFrame:SetSize(120, 28)
+    pagingFrame:SetPoint("BOTTOM", 0, 8)
+    Mixin(pagingFrame, MCUDR_PagingMixin)
+    pagingFrame:OnLoad()
+
+    local pageText = pagingFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    pageText:SetPoint("CENTER")
+    pagingFrame.PageText = pageText
+
+    local prevBtn = CreateFrame("Button", nil, pagingFrame)
+    prevBtn:SetSize(28, 28)
+    prevBtn:SetPoint("LEFT")
+    prevBtn:SetNormalAtlas("common-icon-rotateleft")
+    prevBtn:SetHighlightAtlas("common-icon-rotateleft")
+    prevBtn:GetHighlightTexture():SetAlpha(0.4)
+    prevBtn:SetScript("OnClick", function() pagingFrame:PreviousPage() end)
+
+    local nextBtn = CreateFrame("Button", nil, pagingFrame)
+    nextBtn:SetSize(28, 28)
+    nextBtn:SetPoint("RIGHT")
+    nextBtn:SetNormalAtlas("common-icon-rotateright")
+    nextBtn:SetHighlightAtlas("common-icon-rotateright")
+    nextBtn:GetHighlightTexture():SetAlpha(0.4)
+    nextBtn:SetScript("OnClick", function() pagingFrame:NextPage() end)
+
+    pagingFrame.PrevPageButton = prevBtn
+    pagingFrame.NextPageButton = nextBtn
+
+    local origUpdate = pagingFrame.Update
+    pagingFrame.Update = function(self)
+        if origUpdate then origUpdate(self) end
+        self.PageText:SetText(self.currentPage .. " / " .. self.maxPages)
+        self.PrevPageButton:SetEnabled(self.currentPage > 1)
+        self.NextPageButton:SetEnabled(self.currentPage < self.maxPages)
+    end
+
+    frame.PagingFrame = pagingFrame
+    frame.OnPageChanged = function() UpdateFurnitureModels() end
+
+    frame.Models = {}
+    local gridWidth = FURN_NUM_COLS * FURN_MODEL_WIDTH + (FURN_NUM_COLS - 1) * FURN_COL_GAP
+    local gridHeight = FURN_NUM_ROWS * FURN_MODEL_HEIGHT + (FURN_NUM_ROWS - 1) * FURN_ROW_GAP
+    local panelHeight = parent:GetHeight() or 860
+    local topReserved = 135
+    local bottomReserved = 40
+    local availableHeight = panelHeight - topReserved - bottomReserved
+    local gridOffsetY = -topReserved - max(0, (availableHeight - gridHeight) / 2)
+    local gridOffsetX = max(0, ((parent:GetWidth() or 644) - gridWidth) / 2)
+
+    for row = 0, FURN_NUM_ROWS - 1 do
+        for col = 0, FURN_NUM_COLS - 1 do
+            local idx = row * FURN_NUM_COLS + col + 1
+            local model = CreateFrame("DressUpModel", nil, frame, "MCUDR_WardrobeModelTemplate")
+            model:SetPoint("TOPLEFT", frame, "TOPLEFT",
+                gridOffsetX + col * (FURN_MODEL_WIDTH + FURN_COL_GAP),
+                gridOffsetY - row * (FURN_MODEL_HEIGHT + FURN_ROW_GAP))
+            model:Hide()
+
+            model:SetScript("OnMouseDown", function(self, button)
+                if button == "LeftButton" and self.furnitureData then
+                    currentPreviewFurnitureKey = self.furnitureData.key
+                    PreviewFurniture(self.furnitureData.entryID)
+                end
+            end)
+
+            model:SetScript("OnEnter", function(self)
+                if not self.furnitureData then return end
+                local d = self.furnitureData
+                local qColor = ITEM_QUALITY_COLORS[d.quality or 1] or ITEM_QUALITY_COLORS[1]
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(d.name or "", qColor.r, qColor.g, qColor.b)
+                if d.sourceText and d.sourceText ~= "" then
+                    GameTooltip:AddLine(d.sourceText, NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b, true)
+                end
+                local sizeName = FURNITURE_SIZE_NAMES[d.size]
+                if sizeName then
+                    GameTooltip:AddLine("Size: " .. sizeName, 0.7, 0.7, 0.7)
+                end
+                local flags = {}
+                if d.isAllowedIndoors then flags[#flags + 1] = "Indoor" end
+                if d.isAllowedOutdoors then flags[#flags + 1] = "Outdoor" end
+                if #flags > 0 then
+                    GameTooltip:AddLine(table.concat(flags, " | "), 0.7, 0.7, 0.7)
+                end
+                if d.quantity > 0 then
+                    GameTooltip:AddLine(format("Owned: %d", d.quantity), 0.0, 1.0, 0.0)
+                else
+                    GameTooltip:AddLine("Not Collected", RED_FONT_COLOR.r, RED_FONT_COLOR.g, RED_FONT_COLOR.b)
+                end
+                GameTooltip:Show()
+            end)
+            model:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+            frame.Models[idx] = model
+        end
+    end
+
+    frame:EnableMouseWheel(true)
+    frame:SetScript("OnMouseWheel", function(_, delta)
+        if delta > 0 then pagingFrame:PreviousPage() else pagingFrame:NextPage() end
+    end)
+
+    furnitureCollectionFrame = frame
+    return frame
+end
+
+function ns:ShowFurnitureCollection(entryID)
+    if not C_HousingCatalog then return end
+    if not furnitureCollectionFrame then
+        CreateFurnitureCollectionFrame()
+    end
+
+    local alreadyShowing = furnitureCollectionFrame:IsShown()
+    currentPreviewFurnitureKey = FurnitureKey(entryID)
+
+    if not alreadyShowing then
+        if MCUDR_AppearancesFrame then MCUDR_AppearancesFrame:Hide() end
+        if mountCollectionFrame and mountCollectionFrame:IsShown() then
+            ns:HideMountCollection(true)
+        end
+        if furnitureSearchBox then furnitureSearchBox:SetText("") end
+        furnitureCollectionFrame:Show()
+
+        EnsureFurnitureSearcher()
+        RunFurnitureSearch()
+    end
+
+    -- Results may be empty if async callback hasn't fired yet
+    RefreshFurnitureCollection()
+    if entryID then
+        NavigateToFurniture(entryID)
+    end
+    UpdateFurnitureModels()
+end
+
+function ns:HideFurnitureCollection(skipLayoutRestore)
+    if furnitureCollectionFrame then
+        furnitureCollectionFrame:Hide()
+        if furnitureSearchBox then furnitureSearchBox:SetText("") end
+    end
+    currentPreviewFurnitureKey = nil
+
+    if not skipLayoutRestore then
+        if MCUDressingRoomFrame then
+            local outfitCollection = MCUDressingRoomFrame.OutfitCollection
+            local charPreview = MCUDressingRoomFrame.CharacterPreview
+            local wardrobeCollection = MCUDressingRoomFrame.WardrobeCollection
+            if outfitCollection and charPreview then
+                outfitCollection:Show()
+                charPreview:ClearAllPoints()
+                charPreview:SetPoint("TOPLEFT", outfitCollection, "TOPRIGHT", 0, 0)
+                charPreview:SetSize(658, 860)
+                if charPreview.Background then
+                    charPreview.Background:ClearAllPoints()
+                    charPreview.Background:SetPoint("TOPLEFT")
+                end
+                if wardrobeCollection then
+                    wardrobeCollection:ClearAllPoints()
+                    wardrobeCollection:SetPoint("TOPLEFT", charPreview, "TOPRIGHT", 0, 0)
+                end
+            end
+        end
+
+        if MCUDR_AppearancesFrame and MCUDressingRoomFrame and MCUDressingRoomFrame:IsShown() then
+            MCUDR_AppearancesFrame:Show()
+        end
+    end
+end
+
+function ns:EnterFurnitureMode()
+    if not C_HousingCatalog then return end
+    ShowOurDressingRoom()
+
+    ns:ShowFurnitureCollection(nil)
+
+    local outfitCollection = MCUDressingRoomFrame.OutfitCollection
+    local charPreview = MCUDressingRoomFrame.CharacterPreview
+    local wardrobeCollection = MCUDressingRoomFrame.WardrobeCollection
+    if outfitCollection and charPreview and wardrobeCollection then
+        outfitCollection:Hide()
+        wardrobeCollection:ClearAllPoints()
+        wardrobeCollection:SetPoint("TOPRIGHT", MCUDressingRoomFrame, "TOPRIGHT", -2, -21)
+        charPreview:ClearAllPoints()
+        charPreview:SetPoint("TOPLEFT", MCUDressingRoomFrame, "TOPLEFT", 2, -21)
+        charPreview:SetPoint("TOPRIGHT", wardrobeCollection, "TOPLEFT", 0, 0)
+        charPreview:SetHeight(860)
+        if charPreview.Background then
+            charPreview.Background:ClearAllPoints()
+            charPreview.Background:SetAllPoints(charPreview)
+        end
+    end
+
+    local earlyScene = GetModelScene()
+    if earlyScene then
+        local earlyActor = earlyScene:GetPlayerActor()
+        if earlyActor then
+            earlyActor:ClearModel()
+            earlyActor:Hide()
+        end
+    end
+
+    C_Timer.After(0.3, function()
+        local cp = MCUDressingRoomFrame and MCUDressingRoomFrame.CharacterPreview
+        if cp then
+            if cp.drSlotFrames then
+                for _, btn in pairs(cp.drSlotFrames) do btn:Hide() end
+            end
+            if not cp.FurnitureNameLabel then
+                local label = cp:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+                label:SetPoint("TOP", cp, "TOP", 0, -12)
+                cp.FurnitureNameLabel = label
+            end
+            cp.FurnitureNameLabel:SetTextColor(1, 0.82, 0, 1)
+            cp.FurnitureNameLabel:SetText("Furniture Collection")
+            cp.FurnitureNameLabel:Show()
+            if cp.MountNameLabel then cp.MountNameLabel:Hide() end
+            local controlFrame = cp.ModelScene and cp.ModelScene.ControlFrame
+            if controlFrame then
+                controlFrame:ClearAllPoints()
+                controlFrame:SetPoint("TOP", cp.FurnitureNameLabel, "BOTTOM", 0, -4)
+            end
+        end
+    end)
 end
 
 local function RefreshSlotsAfterTryOn()
@@ -505,7 +1186,7 @@ local function StorePreviewSlot(link)
     local slotID = equipLoc and EQUIP_LOC_TO_SLOT[equipLoc]
 
     if not slotID then
-        -- Item not cached yet — try GetItemInfoInstant for equipLoc
+        -- Item may not be cached yet; GetItemInfoInstant doesn't require cache
         local _, _, _, itemEquipLoc, itemIcon = C_Item.GetItemInfoInstant(link)
         if itemEquipLoc and itemEquipLoc ~= "" then
             slotID = EQUIP_LOC_TO_SLOT[itemEquipLoc]
@@ -515,7 +1196,6 @@ local function StorePreviewSlot(link)
 
     if not slotID then return end
 
-    -- Resolve numeric transmog sourceID from the item link
     local numericSourceID
     if C_TransmogCollection and C_TransmogCollection.GetItemInfo then
         local ok, appearanceID, srcID = pcall(C_TransmogCollection.GetItemInfo, link)
@@ -524,7 +1204,6 @@ local function StorePreviewSlot(link)
         end
     end
 
-    -- Fallback icon from GetItemInfoInstant if GetItemInfo didn't have it
     if not icon then
         local _, _, _, _, itemIcon = C_Item.GetItemInfoInstant(link)
         icon = itemIcon
@@ -544,10 +1223,9 @@ local function TryOnItem(link)
     ShowOurDressingRoom()
     ns.drLastLink = link
 
-    -- Store preview slot data immediately
     StorePreviewSlot(link)
 
-    -- If item wasn't cached, retry when it becomes available
+    -- If item isn't cached yet, request load and retry after a delay
     if not C_Item.GetItemInfo(link) then
         local itemID = C_Item.GetItemInfoInstant(link)
         if itemID then
@@ -559,7 +1237,7 @@ local function TryOnItem(link)
         end)
     end
 
-    -- Defer TryOn so the model scene finishes its transition from OnShow
+    -- Deferred: model scene needs time to finish its OnShow transition
     C_Timer.After(0.5, function()
         local actor = GetPlayerActor()
         if actor then
@@ -570,31 +1248,41 @@ local function TryOnItem(link)
 end
 
 function ns:InitDressingRoomHooks()
-    -- Store ns reference on the frame so DressingRoomFrame.lua can access preview state
     if MCUDressingRoomFrame then
         MCUDressingRoomFrame._addonNS = ns;
     end
 
-    ---------------------------------------------------------------------------
-    -- Replace DressUp globals with wrappers (pre-hook pattern) so that
-    -- Blizzard's DressUpFrame is never opened via ShowUIPanel when we
-    -- override.  This is the same approach used for ToggleCharacter
-    -- (Settings.lua) and InspectUnit (InspectFrame.lua).
-    --
-    -- The previous approach used hooksecurefunc (post-hooks) which let the
-    -- original function run first — opening DressUpFrame through ShowUIPanel.
-    -- We then had to call DressUpFrame:Hide() from addon code, which tainted
-    -- the UI-panel management state and broke the ESC / game-menu.
-    ---------------------------------------------------------------------------
+    -- Must pre-initialize: GetCatalogEntryInfoByItem fails on first use otherwise
+    if C_HousingCatalog then
+        EnsureFurnitureSearcher()
+        if furnitureCatalogSearcher then
+            furnitureCatalogSearcher:RunSearch()
+        end
+    end
+
+    -- Pre-hook pattern: replace DressUp globals so Blizzard's DressUpFrame is
+    -- never opened via ShowUIPanel. Post-hooks (hooksecurefunc) caused taint
+    -- because hiding DressUpFrame from addon code taints UI-panel state.
+
+    local function HandleDressUpLink(link)
+        local mountID = GetMountIDFromLink(link)
+        if mountID then
+            PreviewMount(mountID)
+            return true
+        end
+        local furnitureInfo = GetFurnitureInfoFromLink(link)
+        if furnitureInfo then
+            PreviewFurniture(furnitureInfo.entryID)
+            return true
+        end
+        return false
+    end
 
     if DressUpLink then
         local original = DressUpLink
         DressUpLink = function(link)
             if ShouldPassThrough() or not link then return original(link) end
-            local mountID = GetMountIDFromLink(link)
-            if mountID then
-                PreviewMount(mountID)
-            else
+            if not HandleDressUpLink(link) then
                 TryOnItem(link)
             end
         end
@@ -604,10 +1292,7 @@ function ns:InitDressingRoomHooks()
         local original = DressUpItemLink
         DressUpItemLink = function(link)
             if ShouldPassThrough() or not link then return original(link) end
-            local mountID = GetMountIDFromLink(link)
-            if mountID then
-                PreviewMount(mountID)
-            else
+            if not HandleDressUpLink(link) then
                 TryOnItem(link)
             end
         end
@@ -662,7 +1347,7 @@ function ns:InitDressingRoomHooks()
         local original = DressUpTransmogSet
         DressUpTransmogSet = function(itemModifiedAppearanceIDs)
             if ShouldPassThrough() then return original(itemModifiedAppearanceIDs) end
-            -- Copy the IDs table since it may be recycled
+            -- Blizzard may recycle this table after the call returns
             local ids = {}
             if itemModifiedAppearanceIDs then
                 for i, id in ipairs(itemModifiedAppearanceIDs) do
@@ -686,7 +1371,7 @@ function ns:InitDressingRoomHooks()
         local original = DressUpCollectionAppearance
         DressUpCollectionAppearance = function(appearanceID, transmogLocation, categoryID)
             if ShouldPassThrough() then return original(appearanceID, transmogLocation, categoryID) end
-            -- Capture slot (transmogLocation table may be recycled)
+            -- transmogLocation table may be recycled by Blizzard after return
             local slotID = transmogLocation and transmogLocation.GetSlot
                 and transmogLocation:GetSlot()
             if not MCUDressingRoomFrame or not MCUDressingRoomFrame:IsShown() then
@@ -697,7 +1382,6 @@ function ns:InitDressingRoomHooks()
                 if actor and appearanceID then
                     actor:TryOn(appearanceID)
 
-                    -- Track preview state
                     if slotID then
                         local sources = C_TransmogCollection.GetAppearanceSources(appearanceID)
                         if sources and #sources > 0 then
@@ -728,7 +1412,7 @@ function ns:InitDressingRoomHooks()
         local original = DressUpItemTransmogInfoList
         DressUpItemTransmogInfoList = function(itemTransmogInfoList, showDetails, forceRefresh)
             if ShouldPassThrough() then return original(itemTransmogInfoList, showDetails, forceRefresh) end
-            -- Copy the info list since it may be recycled
+            -- Blizzard may recycle this table after the call returns
             local infoCopy = {}
             if itemTransmogInfoList then
                 for slotID, info in pairs(itemTransmogInfoList) do
@@ -742,7 +1426,6 @@ function ns:InitDressingRoomHooks()
                 if actor then
                     for slotID, info in pairs(infoCopy) do
                         actor:SetItemTransmogInfo(info, slotID)
-                        -- Track each slot
                         if info.appearanceID and info.appearanceID > 0 then
                             local sourceInfo = C_TransmogCollection.GetSourceInfo(info.appearanceID)
                             if sourceInfo and sourceInfo.name then

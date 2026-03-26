@@ -30,6 +30,8 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Click any item slot being previewed to view it in your collection instantly
 - Mount preview mode with 3D model browser, search, and paging across all mounts in the game
 - Ctrl+click any mount link or click the Mounts button to browse and preview mounts
+- Housing furniture preview mode with 3D model browser, category filter, search, and paging
+- Ctrl+click any furniture item link or click the Furniture button to browse and preview housing decorations
 
 ![Dressing Room](https://media.forgecdn.net/attachments/1596/79/wowscrnshot_032326_213949-jpg.jpg)
 
@@ -53,6 +55,7 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Inspect another class and browse their collection in the dressing room with automatic class filtering
 - Search & Filter support for the Reputation and Currency tabs to quickly find what you need
 - Preview mounts in the dressing room with a dedicated mount browser, search, and paging across all mounts in the game
+- Preview housing furniture with 3D models, category filtering, and collection browsing
 - All windows remember their position between sessions
 
 ## Installation
@@ -82,6 +85,7 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - **`/mcu character`**: Toggle character panel
 - **`/mcu dress`**: Toggle dressing room
 - **`/mcu mounts`**: Open mount preview
+- **`/mcu furniture`**: Open furniture preview
 
 ## Feedback and Support
 

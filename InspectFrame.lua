@@ -1,8 +1,5 @@
 local addonName, ns = ...
 
----------------------------------------------------------------------------
--- Constants
----------------------------------------------------------------------------
 local SLOT_SIZE    = ns.SLOT_SIZE
 local SLOT_SPACING = ns.SLOT_SPACING
 local STATS_WIDTH  = ns.STATS_WIDTH
@@ -12,9 +9,6 @@ local SOCKET_SIZE  = 12
 local EQUIP_ROW_HEIGHT = 26
 local EQUIP_ICON_SIZE  = 22
 
----------------------------------------------------------------------------
--- Main Frame
----------------------------------------------------------------------------
 local frame = CreateFrame("Frame", "MCUInspectFrame", UIParent, "PortraitFrameTemplate")
 frame:SetSize(ns.FRAME_WIDTH, ns.FRAME_HEIGHT)
 frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 40, -124)
@@ -38,9 +32,6 @@ frame:SetScript("OnDragStop", function(self)
     end
 end)
 
----------------------------------------------------------------------------
--- Backgrounds — identical to our character panel
----------------------------------------------------------------------------
 local SW = STATS_WIDTH
 
 if frame.Bg then frame.Bg:Hide() end
@@ -84,9 +75,6 @@ cornerLine:SetPoint("TOPRIGHT", modelBg, "TOPRIGHT", 2, 0)
 cornerLine:SetPoint("BOTTOMRIGHT", modelBg, "BOTTOMRIGHT", 2, 0)
 cornerLine:SetAtlas("transmog-outfit-darkbg-cornerline")
 
----------------------------------------------------------------------------
--- Bottom Tabs
----------------------------------------------------------------------------
 local TAB_CHARACTER = 1
 local TAB_PVP       = 2
 local TAB_GUILD     = 3
@@ -94,7 +82,6 @@ local TAB_GUILD     = 3
 local tabs = {}
 local currentTab = TAB_CHARACTER
 
--- Tab content containers
 local characterPage = CreateFrame("Frame", nil, frame)
 characterPage:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -21)
 characterPage:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -2, 2)
@@ -112,7 +99,6 @@ local function SetTab(tabIndex)
     characterPage:SetShown(tabIndex == TAB_CHARACTER)
     pvpPage:SetShown(tabIndex == TAB_PVP)
     guildPage:SetShown(tabIndex == TAB_GUILD)
-    -- Hide character tab backgrounds when on other tabs
     modelBg:SetShown(tabIndex == TAB_CHARACTER)
     statsBg:SetShown(tabIndex == TAB_CHARACTER)
     statsFillBg:SetShown(tabIndex == TAB_CHARACTER)
@@ -150,9 +136,6 @@ frame.numTabs = #tabs
 PanelTemplates_SetNumTabs(frame, #tabs)
 PanelTemplates_SetTab(frame, TAB_CHARACTER)
 
----------------------------------------------------------------------------
--- Equipment Slot Columns (children of characterPage)
----------------------------------------------------------------------------
 local SLOT_COL_INSET = 28
 
 local leftColumn = CreateFrame("Frame", nil, characterPage)
@@ -169,9 +152,6 @@ local bottomSlots = CreateFrame("Frame", nil, characterPage)
 bottomSlots:SetSize(SLOT_SIZE * 2 + SLOT_SPACING, SLOT_SIZE)
 bottomSlots:SetPoint("BOTTOM", modelBg, "BOTTOM", 0, 48)
 
----------------------------------------------------------------------------
--- 3D Model
----------------------------------------------------------------------------
 local model = CreateFrame("DressUpModel", nil, characterPage)
 model:SetPoint("TOPLEFT", leftColumn, "TOPRIGHT", 10, 10)
 model:SetPoint("BOTTOMRIGHT", rightColumn, "BOTTOMLEFT", -10, 40)
@@ -216,9 +196,6 @@ end)
 
 frame.model = model
 
----------------------------------------------------------------------------
--- Create Equipment Slot Button (inspect version)
----------------------------------------------------------------------------
 local slotButtons = {}
 frame.slotButtons = slotButtons
 
@@ -273,7 +250,6 @@ local function CreateInspectSlot(parent, slotInfo, index, anchorPoint, xOff, yOf
     ilvlText:SetTextColor(1, 0.82, 0, 1)
     btn.ilvlText = ilvlText
 
-    -- Enchant status indicator (top-left corner, shown when enchanted)
     local enchantIndicator = btn:CreateTexture(nil, "OVERLAY", nil, 3)
     enchantIndicator:SetSize(14, 14)
     enchantIndicator:SetPoint("TOPLEFT", 2, -2)
@@ -281,7 +257,6 @@ local function CreateInspectSlot(parent, slotInfo, index, anchorPoint, xOff, yOf
     enchantIndicator:Hide()
     btn.enchantIndicator = enchantIndicator
 
-    -- Upgrade track text (top-right corner)
     local upgradeText = btn:CreateFontString(nil, "OVERLAY")
     upgradeText:SetFont(STANDARD_TEXT_FONT, 9, "OUTLINE")
     upgradeText:SetPoint("TOPRIGHT", -2, -4)
@@ -289,7 +264,6 @@ local function CreateInspectSlot(parent, slotInfo, index, anchorPoint, xOff, yOf
     upgradeText:Hide()
     btn.upgradeText = upgradeText
 
-    -- Overlay readability elements
     local overlays = {}
     local darken = btn:CreateTexture(nil, "ARTWORK", nil, 7)
     darken:SetPoint("TOPLEFT", icon); darken:SetPoint("BOTTOMRIGHT", icon)
@@ -398,14 +372,10 @@ for i, slotInfo in ipairs(ns.BOTTOM_SLOTS) do
     CreateInspectSlot(bottomSlots, slotInfo, 1, "TOPLEFT", xOff, 0)
 end
 
----------------------------------------------------------------------------
--- Right Side — Info Panel (child of characterPage)
----------------------------------------------------------------------------
 local infoContainer = CreateFrame("Frame", nil, characterPage)
 infoContainer:SetPoint("TOPLEFT", statsBg, "TOPLEFT", 14, -14)
 infoContainer:SetPoint("BOTTOMRIGHT", statsBg, "BOTTOMRIGHT", -14, 14)
 
--- Character name
 local nameText = infoContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 nameText:SetPoint("TOP", infoContainer, "TOP", 0, -8)
 nameText:SetWidth(STATS_WIDTH - 40)
@@ -413,7 +383,6 @@ nameText:SetJustifyH("CENTER")
 nameText:SetWordWrap(false)
 frame.nameText = nameText
 
--- Level & class
 local levelText = infoContainer:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 levelText:SetPoint("TOP", nameText, "BOTTOM", 0, -4)
 levelText:SetWidth(STATS_WIDTH - 40)
@@ -421,7 +390,6 @@ levelText:SetJustifyH("CENTER")
 levelText:SetWordWrap(false)
 frame.levelText = levelText
 
--- Specialization
 local specText = infoContainer:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 specText:SetPoint("TOP", levelText, "BOTTOM", 0, -2)
 specText:SetWidth(STATS_WIDTH - 40)
@@ -429,7 +397,6 @@ specText:SetJustifyH("CENTER")
 specText:SetTextColor(0.8, 0.8, 0.8)
 frame.specText = specText
 
--- Guild
 local guildText = infoContainer:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 guildText:SetPoint("TOP", specText, "BOTTOM", 0, -4)
 guildText:SetWidth(STATS_WIDTH - 40)
@@ -445,7 +412,6 @@ mountText:SetTextColor(1, 0.82, 0, 1)
 mountText:Hide()
 frame.mountText = mountText
 
--- Divider 1
 local divider1 = infoContainer:CreateTexture(nil, "ARTWORK")
 divider1:SetHeight(1)
 divider1:SetPoint("LEFT", infoContainer, "LEFT", 0, 0)
@@ -453,20 +419,17 @@ divider1:SetPoint("RIGHT", infoContainer, "RIGHT", 0, 0)
 divider1:SetPoint("TOP", mountText, "BOTTOM", 0, -10)
 divider1:SetColorTexture(0.4, 0.4, 0.4, 0.4)
 
--- Item Level header
 local ilvlHeader = infoContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 ilvlHeader:SetPoint("TOP", divider1, "BOTTOM", 0, -10)
 ilvlHeader:SetText(STAT_AVERAGE_ITEM_LEVEL or "Item Level")
 ilvlHeader:SetTextColor(1, 0.82, 0)
 
--- Item Level value
 local ilvlValue = infoContainer:CreateFontString(nil, "OVERLAY")
 ilvlValue:SetFont(STANDARD_TEXT_FONT, 28, "OUTLINE")
 ilvlValue:SetPoint("TOP", ilvlHeader, "BOTTOM", 0, -4)
 ilvlValue:SetTextColor(1, 0.82, 0)
 frame.ilvlValue = ilvlValue
 
--- View in Dressing Room button (uses same API as legacy inspect: transmog info list)
 local dressUpBtn = CreateFrame("Button", nil, infoContainer, "UIPanelButtonTemplate")
 dressUpBtn:SetSize(STATS_WIDTH - 50, 26)
 dressUpBtn:SetPoint("TOP", ilvlValue, "BOTTOM", 0, -10)
@@ -474,37 +437,22 @@ dressUpBtn:SetText(INSPECT_PAPERDOLL_VIEW or "View in Dressing Room")
 dressUpBtn:SetScript("OnClick", function()
     if not frame.unit then return end
     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-    local infoList = C_TransmogCollection.GetInspectItemTransmogInfoList()
+
+    local infoList = frame._cachedTransmogInfoList
+    local itemLinks = frame._cachedItemLinks or {}
+    local inspectClassID = frame._cachedClassID
     if not infoList then return end
 
-    -- Capture unit data before hiding (OnHide clears frame.unit)
-    local unit = frame.unit
-    local _, _, inspectClassID = UnitClass(unit)
     frame:Hide()
 
     -- Open our dressing room directly (bypass DressUpItemTransmogInfoList which
     -- triggers ShowUIPanel on Blizzard's DressUpFrame and disturbs panel layout)
     if MCUDressingRoomFrame then
-        -- Store the inspected unit's class for collection filtering
         if inspectClassID and ns then
             ns.drPreviewClassID = inspectClassID
         end
 
         MCUDressingRoomFrame:Show()
-        -- Also collect item links for slots without transmog
-        local itemLinks = {}
-        if unit then
-            local allSlots = {}
-            for _, s in ipairs(ns.LEFT_SLOTS)   do table.insert(allSlots, s) end
-            for _, s in ipairs(ns.RIGHT_SLOTS)  do table.insert(allSlots, s) end
-            for _, s in ipairs(ns.BOTTOM_SLOTS) do table.insert(allSlots, s) end
-            for _, slotInfo in ipairs(allSlots) do
-                local link = GetInventoryItemLink(unit, slotInfo.id)
-                if link then
-                    itemLinks[slotInfo.id] = link
-                end
-            end
-        end
 
         MCUDR_PreviewedSlots = {}
 
@@ -514,10 +462,8 @@ dressUpBtn:SetScript("OnClick", function()
                 and MCUDressingRoomFrame.CharacterPreview.ModelScene:GetPlayerActor()
             if not actor then return end
 
-            -- Undress first so the player's own gear doesn't show through
             actor:Undress()
 
-            -- Apply transmog info for each slot and populate preview slots
             for slotID, info in pairs(infoList) do
                 local ignoreChildItems = slotID ~= INVSLOT_MAINHAND
                 actor:SetItemTransmogInfo(info, slotID, ignoreChildItems)
@@ -567,7 +513,6 @@ dressUpBtn:SetScript("OnClick", function()
     end
 end)
 
--- View Mount button (only visible when inspected player is mounted)
 local viewMountBtn = CreateFrame("Button", nil, infoContainer, "UIPanelButtonTemplate")
 viewMountBtn:SetSize(STATS_WIDTH - 50, 26)
 viewMountBtn:SetPoint("TOP", dressUpBtn, "BOTTOM", 0, -4)
@@ -582,7 +527,6 @@ viewMountBtn:SetScript("OnClick", function()
     end
 end)
 
--- View Talents button (uses same code path as legacy inspect)
 local talentsBtn = CreateFrame("Button", nil, infoContainer, "UIPanelButtonTemplate")
 talentsBtn:SetSize(STATS_WIDTH - 50, 26)
 talentsBtn:SetPoint("TOP", viewMountBtn, "BOTTOM", 0, -4)
@@ -598,7 +542,6 @@ talentsBtn:SetScript("OnClick", function()
 end)
 frame.talentsBtn = talentsBtn
 
--- Divider 2
 local divider2 = infoContainer:CreateTexture(nil, "ARTWORK")
 divider2:SetHeight(1)
 divider2:SetPoint("LEFT", infoContainer, "LEFT", 0, 0)
@@ -606,13 +549,11 @@ divider2:SetPoint("RIGHT", infoContainer, "RIGHT", 0, 0)
 divider2:SetPoint("TOP", talentsBtn, "BOTTOM", 0, -10)
 divider2:SetColorTexture(0.4, 0.4, 0.4, 0.4)
 
--- Equipment header
 local equipHeader = infoContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 equipHeader:SetPoint("TOPLEFT", divider2, "BOTTOMLEFT", 0, -8)
 equipHeader:SetText("Equipment")
 equipHeader:SetTextColor(1, 0.82, 0)
 
--- Equipment list — scrollable
 local equipScroll = CreateFrame("ScrollFrame", nil, infoContainer, "UIPanelScrollFrameTemplate")
 equipScroll:SetPoint("TOPLEFT", equipHeader, "BOTTOMLEFT", 0, -6)
 equipScroll:SetPoint("BOTTOMRIGHT", infoContainer, "BOTTOMRIGHT", -22, 4)
@@ -623,14 +564,10 @@ equipScroll:SetScrollChild(equipContent)
 frame.equipContent = equipContent
 frame.equipRows = {}
 
----------------------------------------------------------------------------
--- PvP Page Content
----------------------------------------------------------------------------
 local pvpContainer = CreateFrame("Frame", nil, pvpPage)
 pvpContainer:SetPoint("TOPLEFT", characterPage, "TOPLEFT")
 pvpContainer:SetPoint("BOTTOMRIGHT", characterPage, "BOTTOMRIGHT")
 
--- Background
 local pvpBaseBg = pvpContainer:CreateTexture(nil, "BACKGROUND")
 pvpBaseBg:SetAllPoints()
 pvpBaseBg:SetAtlas("transmog-outfit-darkbg")
@@ -645,33 +582,28 @@ pvpBorder:SetPoint("TOPLEFT", -11, 12)
 pvpBorder:SetPoint("BOTTOMRIGHT", 7, -10)
 pvpBorder:SetAtlas("transmog-tabs-frame")
 
--- Honor level badge (large, centered)
 local pvpHonorBadge = pvpContainer:CreateTexture(nil, "ARTWORK")
 pvpHonorBadge:SetSize(64, 64)
 pvpHonorBadge:SetPoint("TOP", pvpContainer, "TOP", 0, -30)
 frame.pvpHonorBadge = pvpHonorBadge
 
--- Honor level number (overlaid on badge)
 local pvpHonorLevelNum = pvpContainer:CreateFontString(nil, "OVERLAY")
 pvpHonorLevelNum:SetFont(STANDARD_TEXT_FONT, 22, "OUTLINE")
 pvpHonorLevelNum:SetPoint("CENTER", pvpHonorBadge, "CENTER", 0, 0)
 pvpHonorLevelNum:SetTextColor(1, 0.82, 0)
 frame.pvpHonorLevelNum = pvpHonorLevelNum
 
--- Honor level label below badge
 local pvpHonorLabel = pvpContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 pvpHonorLabel:SetPoint("TOP", pvpHonorBadge, "BOTTOM", 0, -4)
 pvpHonorLabel:SetJustifyH("CENTER")
 frame.pvpHonorLabel = pvpHonorLabel
 
--- HKs below honor label
 local pvpHKs = pvpContainer:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 pvpHKs:SetPoint("TOP", pvpHonorLabel, "BOTTOM", 0, -6)
 pvpHKs:SetWidth(600)
 pvpHKs:SetJustifyH("CENTER")
 frame.pvpHKs = pvpHKs
 
--- Divider
 local pvpDivider = pvpContainer:CreateTexture(nil, "ARTWORK")
 pvpDivider:SetHeight(1)
 pvpDivider:SetPoint("LEFT", pvpContainer, "LEFT", 40, 0)
@@ -679,7 +611,6 @@ pvpDivider:SetPoint("RIGHT", pvpContainer, "RIGHT", -40, 0)
 pvpDivider:SetPoint("TOP", pvpHKs, "BOTTOM", 0, -12)
 pvpDivider:SetColorTexture(0.4, 0.4, 0.4, 0.4)
 
--- PvP stat block helper (left-aligned within block, matching legacy layout)
 local function CreatePvPStatBlock(parent, labelText)
     local block = CreateFrame("Frame", nil, parent)
     block:SetSize(280, 58)
@@ -706,7 +637,6 @@ local function CreatePvPStatBlock(parent, labelText)
     return block
 end
 
--- Left column of stat blocks
 local pvpArena2v2 = CreatePvPStatBlock(pvpContainer, ARENA_2V2 or "Arena 2v2")
 pvpArena2v2:SetPoint("TOPLEFT", pvpDivider, "BOTTOMLEFT", 20, -16)
 frame.pvpArena2v2 = pvpArena2v2
@@ -719,7 +649,6 @@ local pvpSoloShuffle = CreatePvPStatBlock(pvpContainer, RATED_SOLO_SHUFFLE or "S
 pvpSoloShuffle:SetPoint("TOPLEFT", pvpArena3v3, "BOTTOMLEFT", 0, -8)
 frame.pvpSoloShuffle = pvpSoloShuffle
 
--- Right column of stat blocks
 local pvpRatedBG = CreatePvPStatBlock(pvpContainer, BATTLEGROUND_RATING or "Rated BG")
 pvpRatedBG:SetPoint("TOPLEFT", pvpDivider, "BOTTOMLEFT", 340, -16)
 frame.pvpRatedBG = pvpRatedBG
@@ -728,7 +657,6 @@ local pvpBGBlitz = CreatePvPStatBlock(pvpContainer, "BG Blitz")
 pvpBGBlitz:SetPoint("TOPLEFT", pvpRatedBG, "BOTTOMLEFT", 0, -8)
 frame.pvpBGBlitz = pvpBGBlitz
 
--- No PvP data message
 local pvpNoData = pvpContainer:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 pvpNoData:SetPoint("CENTER", pvpContainer, "CENTER", 0, -40)
 pvpNoData:SetText("No PvP data available")
@@ -738,14 +666,10 @@ frame.pvpNoData = pvpNoData
 
 frame.pvpContainer = pvpContainer
 
----------------------------------------------------------------------------
--- Guild Page Content — full-page layout with guild background
----------------------------------------------------------------------------
 local guildContainer = CreateFrame("Frame", nil, guildPage)
 guildContainer:SetPoint("TOPLEFT", characterPage, "TOPLEFT")
 guildContainer:SetPoint("BOTTOMRIGHT", characterPage, "BOTTOMRIGHT")
 
--- Full-page dark background + fill + border (matches our stats panel style)
 local guildBaseBg = guildContainer:CreateTexture(nil, "BACKGROUND")
 guildBaseBg:SetAllPoints()
 guildBaseBg:SetAtlas("transmog-outfit-darkbg")
@@ -760,7 +684,6 @@ guildBorderFrame:SetPoint("TOPLEFT", -11, 12)
 guildBorderFrame:SetPoint("BOTTOMRIGHT", 7, -10)
 guildBorderFrame:SetAtlas("transmog-tabs-frame")
 
--- Guild tabard banner
 local guildBanner = guildContainer:CreateTexture(nil, "ARTWORK", nil, 0)
 guildBanner:SetTexture("Interface\\GuildFrame\\GuildInspect-Parts")
 guildBanner:SetSize(118, 144)
@@ -768,14 +691,12 @@ guildBanner:SetPoint("TOP", guildContainer, "TOP", 0, -30)
 guildBanner:SetTexCoord(0.23632813, 0.46679688, 0.70117188, 0.98242188)
 frame.guildBanner = guildBanner
 
--- Banner border
 local guildBannerBorder = guildContainer:CreateTexture(nil, "ARTWORK", nil, 1)
 guildBannerBorder:SetTexture("Interface\\GuildFrame\\GuildInspect-Parts")
 guildBannerBorder:SetSize(118, 144)
 guildBannerBorder:SetPoint("TOPLEFT", guildBanner, "TOPLEFT")
 guildBannerBorder:SetTexCoord(0.00195313, 0.23242188, 0.70117188, 0.98242188)
 
--- Tabard icons (mirrored pair)
 local tabardLeftIcon = guildContainer:CreateTexture(nil, "ARTWORK", nil, 2)
 tabardLeftIcon:SetSize(50, 125)
 tabardLeftIcon:SetPoint("TOPLEFT", guildBanner, "TOPLEFT", 10, -1)
@@ -787,35 +708,30 @@ tabardRightIcon:SetSize(50, 125)
 tabardRightIcon:SetPoint("LEFT", tabardLeftIcon, "RIGHT", -1, 0)
 frame.tabardRightIcon = tabardRightIcon
 
--- Guild name (below the banner)
 local guildNameText = guildContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
 guildNameText:SetPoint("TOP", guildBanner, "BOTTOM", 0, -16)
 guildNameText:SetWidth(600)
 guildNameText:SetJustifyH("CENTER")
 frame.guildNameText = guildNameText
 
--- Guild realm
 local guildRealmText = guildContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 guildRealmText:SetPoint("TOP", guildNameText, "BOTTOM", 0, -10)
 guildRealmText:SetWidth(600)
 guildRealmText:SetJustifyH("CENTER")
 frame.guildRealmText = guildRealmText
 
--- Guild faction
 local guildFactionText = guildContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 guildFactionText:SetPoint("TOP", guildRealmText, "BOTTOM", 0, -4)
 guildFactionText:SetWidth(600)
 guildFactionText:SetJustifyH("CENTER")
 frame.guildFactionText = guildFactionText
 
--- Guild members
 local guildMembersText = guildContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 guildMembersText:SetPoint("TOP", guildFactionText, "BOTTOM", 0, -26)
 guildMembersText:SetWidth(600)
 guildMembersText:SetJustifyH("CENTER")
 frame.guildMembersText = guildMembersText
 
--- No guild message
 local noGuildText = guildContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 noGuildText:SetPoint("CENTER", guildContainer, "CENTER", 0, 0)
 noGuildText:SetText(NO_GUILD or "No Guild")
@@ -823,9 +739,6 @@ noGuildText:SetTextColor(0.5, 0.5, 0.5)
 noGuildText:Hide()
 frame.noGuildText = noGuildText
 
----------------------------------------------------------------------------
--- Update Functions
----------------------------------------------------------------------------
 local function SetBorderColor(btn, r, g, b)
     for _, tex in ipairs(btn.borderTextures) do
         tex:SetColorTexture(r, g, b, 0.9)
@@ -882,7 +795,6 @@ local function UpdateSlot(btn, unit)
         end
     end
 
-    -- Enchant status overlay
     btn.enchantIndicator:Hide()
     local isEnchanted = false
     if ns.db and ns.db.global and ns.db.global.showEnchantStatus and link then
@@ -898,7 +810,6 @@ local function UpdateSlot(btn, unit)
         btn.overlays.cornerTL:SetShown(style == "corners" and isEnchanted)
     end
 
-    -- Upgrade track overlay
     btn.upgradeText:Hide()
     if ns.db and ns.db.global and ns.db.global.showUpgradeTrack and link then
         if C_TooltipInfo and C_TooltipInfo.GetInventoryItem then
@@ -923,7 +834,6 @@ local function UpdateSlot(btn, unit)
         end
     end
 
-    -- Sync overlay style (shadow text etc.)
     if btn.overlays then
         local style = (ns.db and ns.db.global and ns.db.global.slotOverlayStyle) or "none"
         local showShadow = (style == "shadow")
@@ -996,7 +906,6 @@ local function UpdateCharacterInfo()
         frame.guildText:Hide()
     end
 
-    -- Show mount name if the inspected player is mounted
     local mountName = nil
     if C_MountJournal and C_MountJournal.GetMountFromSpell and C_UnitAuras then
         local buffIndex = 1
@@ -1115,7 +1024,6 @@ local function UpdatePvPPage()
 
     local hasData = false
 
-    -- Honor data
     if GetInspectHonorData then
         local _, _, _, _, lifetimeHKs, _, honorLevel = GetInspectHonorData()
         honorLevel = honorLevel or 0
@@ -1123,7 +1031,6 @@ local function UpdatePvPPage()
 
         if honorLevel > 0 then
             hasData = true
-            -- Honor badge icon
             local badgeFileID = C_PvP and C_PvP.GetHonorRewardInfo and C_PvP.GetHonorRewardInfo(honorLevel)
             if badgeFileID then
                 frame.pvpHonorBadge:SetTexture(badgeFileID)
@@ -1150,7 +1057,6 @@ local function UpdatePvPPage()
         end
     end
 
-    -- Arena 2v2 / 3v3
     if GetInspectArenaData then
         local r2, p2, w2 = GetInspectArenaData(1)
         UpdatePvPStatBlock(frame.pvpArena2v2, r2, w2, p2)
@@ -1161,7 +1067,6 @@ local function UpdatePvPPage()
         if (r3 or 0) > 0 or (p3 or 0) > 0 then hasData = true end
     end
 
-    -- Solo Shuffle
     if C_PaperDollInfo.GetInspectRatedSoloShuffleData then
         local data = C_PaperDollInfo.GetInspectRatedSoloShuffleData()
         if data then
@@ -1170,7 +1075,6 @@ local function UpdatePvPPage()
         end
     end
 
-    -- Rated BG
     if C_PaperDollInfo.GetInspectRatedBGData then
         local data = C_PaperDollInfo.GetInspectRatedBGData()
         if data then
@@ -1179,7 +1083,6 @@ local function UpdatePvPPage()
         end
     end
 
-    -- BG Blitz
     if C_PaperDollInfo.GetInspectRatedBGBlitzData then
         local data = C_PaperDollInfo.GetInspectRatedBGBlitzData()
         if data then
@@ -1198,7 +1101,6 @@ local function UpdateGuildPage()
     local guildName, guildRankName = GetGuildInfo(unit)
     local hasGuild = guildName and guildName ~= ""
 
-    -- Toggle visibility
     frame.guildBanner:SetShown(hasGuild)
     frame.tabardLeftIcon:SetShown(hasGuild)
     frame.tabardRightIcon:SetShown(hasGuild)
@@ -1212,16 +1114,13 @@ local function UpdateGuildPage()
 
     frame.guildNameText:SetText(guildName)
 
-    -- Faction
     local _, factionName = UnitFactionGroup(unit)
     frame.guildFactionText:SetText(factionName or "")
 
-    -- Tabard textures
     if SetDoubleGuildTabardTextures then
         SetDoubleGuildTabardTextures(unit, frame.tabardLeftIcon, frame.tabardRightIcon, frame.guildBanner, nil)
     end
 
-    -- Inspect guild info (member count, realm)
     local realmName, numMembers
     if C_PaperDollInfo and C_PaperDollInfo.GetInspectGuildInfo then
         local guildPoints, members, apiName, realm = C_PaperDollInfo.GetInspectGuildInfo(unit)
@@ -1267,7 +1166,6 @@ local function UpdateMountButton()
         viewMountBtn:Hide()
         return
     end
-    -- Check if the inspected unit is mounted
     local mountID = nil
     if C_MountJournal and C_MountJournal.GetMountFromSpell then
         local buffIndex = 1
@@ -1294,7 +1192,6 @@ local function UpdateMountButton()
         viewMountBtn.mountID = nil
         viewMountBtn:Hide()
     end
-    -- Reanchor talents button based on mount button visibility
     talentsBtn:ClearAllPoints()
     if viewMountBtn:IsShown() then
         talentsBtn:SetPoint("TOP", viewMountBtn, "BOTTOM", 0, -4)
@@ -1314,9 +1211,6 @@ local function RefreshAll()
     UpdateMountButton()
 end
 
----------------------------------------------------------------------------
--- Inspect retry logic
----------------------------------------------------------------------------
 local pendingInspect = nil
 local INSPECT_TIMEOUT = 2
 local MAX_RETRIES = 3
@@ -1332,7 +1226,6 @@ local function ScheduleInspectRetry()
     if not pendingInspect then return end
 
     if pendingInspect.retries >= MAX_RETRIES then
-        -- Give up — show the frame with whatever data we have
         CancelPendingInspect()
         frame:Show()
         UpdateModel()
@@ -1353,9 +1246,6 @@ local function ScheduleInspectRetry()
     pendingInspect.timer = C_Timer.NewTimer(INSPECT_TIMEOUT, ScheduleInspectRetry)
 end
 
----------------------------------------------------------------------------
--- Events
----------------------------------------------------------------------------
 frame:RegisterEvent("INSPECT_READY")
 frame:RegisterEvent("INSPECT_HONOR_UPDATE")
 frame:RegisterEvent("UNIT_INVENTORY_CHANGED")
@@ -1369,12 +1259,28 @@ frame:SetScript("OnEvent", function(self, event, ...)
         if self.unit and UnitGUID(self.unit) == guid then
             local ilevel = C_PaperDollInfo.GetInspectItemLevel(self.unit)
             if (not ilevel or ilevel == 0) and pendingInspect and pendingInspect.guid == guid then
-                -- Data didn't fully load; cancel current timer and retry
                 if pendingInspect.timer then pendingInspect.timer:Cancel() end
                 ScheduleInspectRetry()
                 return
             end
             CancelPendingInspect()
+            -- Cache transmog and item data NOW while inspect state is valid
+            -- for this specific unit (before any other NotifyInspect overwrites it)
+            frame._cachedTransmogInfoList = C_TransmogCollection.GetInspectItemTransmogInfoList()
+            frame._cachedItemLinks = {}
+            frame._cachedClassID = select(3, UnitClass(self.unit))
+            if self.unit then
+                local allSlots = {}
+                for _, s in ipairs(ns.LEFT_SLOTS)   do table.insert(allSlots, s) end
+                for _, s in ipairs(ns.RIGHT_SLOTS)  do table.insert(allSlots, s) end
+                for _, s in ipairs(ns.BOTTOM_SLOTS) do table.insert(allSlots, s) end
+                for _, slotInfo in ipairs(allSlots) do
+                    local link = GetInventoryItemLink(self.unit, slotInfo.id)
+                    if link then
+                        frame._cachedItemLinks[slotInfo.id] = link
+                    end
+                end
+            end
             self:Show()
             UpdateModel()
             RefreshAll()
@@ -1408,6 +1314,9 @@ frame:SetScript("OnHide", function(self)
     PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
     CancelPendingInspect()
     self.unit = nil
+    self._cachedTransmogInfoList = nil
+    self._cachedItemLinks = nil
+    self._cachedClassID = nil
     ClearInspectPlayer()
 end)
 
@@ -1421,9 +1330,6 @@ frame:SetScript("OnShow", function(self)
     end
 end)
 
----------------------------------------------------------------------------
--- Public: Show inspect for a unit
----------------------------------------------------------------------------
 function ns:ShowInspect(unit)
     if not unit then return end
 
@@ -1437,12 +1343,8 @@ function ns:ShowInspect(unit)
     pendingInspect.timer = C_Timer.NewTimer(INSPECT_TIMEOUT, ScheduleInspectRetry)
 end
 
----------------------------------------------------------------------------
--- Hook the inspect system
----------------------------------------------------------------------------
--- Same pattern as HookCharacterPanel: replace the global function so
--- Blizzard's InspectFrame never opens in the first place. This avoids
--- taint and panel system conflicts entirely.
+-- Replace InspectUnit globally so Blizzard's InspectFrame never opens,
+-- avoiding taint and panel system conflicts.
 function ns:InitInspectHooks()
     local originalInspectUnit = InspectUnit
     InspectUnit = function(unit, ...)

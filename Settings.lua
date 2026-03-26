@@ -73,6 +73,10 @@ function MCU:ChatCommand(input)
                 ns:PreviewMount(defaultMountID)
             end
         end
+    elseif (input == "furniture" or input == "housing" or input == "decor") then
+        if ns.EnterFurnitureMode and C_HousingCatalog then
+            ns:EnterFurnitureMode()
+        end
     else
         LibStub("AceConfigDialog-3.0"):Open(addonName)
     end

@@ -3,7 +3,6 @@ StaticPopupDialogs["MCU_DR_BUY_OUTFIT_SLOT"] = {
 	button1 = YES,
 	button2 = NO,
 	OnAccept = function(_dialog, _data)
-		-- Check if player can afford.
 		local nextOutfitCost = C_TransmogOutfitInfo.GetNextOutfitCost();
 		if GetMoney() < nextOutfitCost then
 			UIErrorsFrame:AddMessage(ERR_TRANSMOG_OUTFIT_SLOT_CANNOT_AFFORD, RED_FONT_COLOR.r, RED_FONT_COLOR.g, RED_FONT_COLOR.b);
@@ -65,7 +64,6 @@ StaticPopupDialogs["MCU_DR_USABLE_DISCOUNT"] = {
 	OnButton3 = function()
 	end,
 	OnShow = function(dialog, _data)
-		-- Disable 'Use Gold' button if player cannot afford.
 		local cost = C_TransmogOutfitInfo.GetPendingTransmogCost();
 		local canAfford = cost and cost <= GetMoney();
 		dialog:GetButton2():SetEnabled(canAfford);
@@ -148,7 +146,6 @@ function MCUDR_FrameMixin:OnLoad()
 	self.WardrobeCollection.GetItemTransmogInfoListCallback = GenerateClosure(self.CharacterPreview.GetItemTransmogInfoList, self.CharacterPreview);
 	self.WardrobeCollection.GetSlotFrameCallback = GenerateClosure(self.CharacterPreview.GetSlotFrame, self.CharacterPreview);
 
-	-- Scale frame to fit screen, same visual result as Transmog's checkFit
 	self:RegisterEvent("DISPLAY_SIZE_CHANGED");
 	self:RegisterEvent("UI_SCALE_CHANGED");
 	self:HookScript("OnEvent", function(s, event)
@@ -183,7 +180,6 @@ end
 function MCUDR_FrameMixin:OnShow()
 	PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN);
 
-	-- Restore saved position
 	local addonNS = self._addonNS;
 	if addonNS and addonNS.db and addonNS.db.global and addonNS.db.global.dressingRoomPosition then
 		local pos = addonNS.db.global.dressingRoomPosition;
@@ -195,12 +191,10 @@ function MCUDR_FrameMixin:OnShow()
 
 	self:SetPortraitToUnit("player");
 
-	-- Set left sidebar title
 	if self.OutfitCollection and self.OutfitCollection.AppearancesTitle then
 		self.OutfitCollection.AppearancesTitle:SetText(WARDROBE_OUTFITS or "Saved Appearances");
 	end
 
-	-- Set right sidebar title (push tabs down to match left sidebar layout)
 	if self.WardrobeCollection then
 		if not self.WardrobeCollection.CollectionTitle then
 			local title = self.WardrobeCollection:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge");
@@ -214,7 +208,6 @@ function MCUDR_FrameMixin:OnShow()
 			divider:SetAtlas("transmog-outfit-dividerline", true);
 			divider:SetPoint("TOP", self.WardrobeCollection, "TOP", 0, -102);
 
-			-- Shift tab headers and content down to make room for the title
 			self.WardrobeCollection.TabHeaders:ClearAllPoints();
 			self.WardrobeCollection.TabHeaders:SetPoint("TOPLEFT", 32, -84);
 			self.WardrobeCollection.TabContent:ClearAllPoints();
@@ -223,7 +216,6 @@ function MCUDR_FrameMixin:OnShow()
 		self.WardrobeCollection.CollectionTitle:SetText("Collection");
 	end
 
-	-- Hide transmog-specific elements not needed for dressing room
 	if self.OutfitCollection then
 		if self.OutfitCollection.ShowEquippedGearSpellFrame then
 			self.OutfitCollection.ShowEquippedGearSpellFrame:Hide();
@@ -242,32 +234,31 @@ function MCUDR_FrameMixin:OnShow()
 		self.CharacterPreview.ClearAllPendingButton:Hide();
 	end
 
-	-- Create dressing room buttons once
 	if not self._drButtonsCreated and self.CharacterPreview then
 		self._drButtonsCreated = true;
 		local preview = self.CharacterPreview;
 		local btnW, btnH = 80, 26;
 
-		-- Button container at high frame level above the model
 		local btnBar = CreateFrame("Frame", nil, preview);
 		btnBar:SetPoint("BOTTOMLEFT", preview, "BOTTOMLEFT", 0, 0);
 		btnBar:SetPoint("BOTTOMRIGHT", preview, "BOTTOMRIGHT", 0, 0);
 		btnBar:SetHeight(44);
 		btnBar:SetFrameLevel(preview:GetFrameLevel() + 50);
 
-		-- Reset: re-dress player model with equipped gear
 		local resetBtn = CreateFrame("Button", nil, btnBar, "UIPanelButtonTemplate");
 		resetBtn:SetSize(btnW, btnH);
 		resetBtn:SetPoint("BOTTOMLEFT", 24, 12);
 		resetBtn:SetText(RESET or "Reset");
 		resetBtn:SetScript("OnClick", function()
 			PlaySound(SOUNDKIT.UI_TRANSMOG_REVERTING_GEAR_SLOT);
-			-- Clean up mount actor if one exists from a mount preview
 			if preview.ModelScene and preview.ModelScene._mountActor then
 				preview.ModelScene._mountActor:ClearModel();
 				preview.ModelScene._mountActor = nil;
 			end
-			-- Restore character preview scene and player model
+			if preview.ModelScene and preview.ModelScene._furnitureActor then
+				preview.ModelScene._furnitureActor:ClearModel();
+				preview.ModelScene._furnitureActor = nil;
+			end
 			if preview.ModelScene then
 				preview.ModelScene:TransitionToModelSceneID(290, CAMERA_TRANSITION_TYPE_IMMEDIATE, CAMERA_MODIFICATION_TYPE_DISCARD, true);
 			end
@@ -277,26 +268,31 @@ function MCUDR_FrameMixin:OnShow()
 				actor:SetModelByUnit("player", false, true, false,
 					PlayerUtil.ShouldUseNativeFormInModelScene and PlayerUtil.ShouldUseNativeFormInModelScene());
 			end
-			-- Restore equipment slots and hide mount name
 			if preview.drSlotFrames then
 				preview:SetupSlots();
 			end
 			if preview.MountNameLabel then
 				preview.MountNameLabel:Hide();
 			end
-			-- Restore camera controls to default position
+			if preview.FurnitureNameLabel then
+				preview.FurnitureNameLabel:Hide();
+			end
+			if preview.FurnitureIconFallback then
+				preview.FurnitureIconFallback:Hide();
+			end
 			local controlFrame = preview.ModelScene and preview.ModelScene.ControlFrame;
 			if controlFrame then
 				controlFrame:ClearAllPoints();
 				controlFrame:SetPoint("TOP", 0, -18);
 			end
-			-- Hide mount collection and restore appearances
 			local addonNS = MCUDressingRoomFrame._addonNS;
 			if addonNS and addonNS.HideMountCollection then
 				addonNS:HideMountCollection();
 			end
+			if addonNS and addonNS.HideFurnitureCollection then
+				addonNS:HideFurnitureCollection();
+			end
 			MCUDR_PreviewedSlots = {};
-			-- Deselect any saved appearance in the outfit list
 			if self.OutfitCollection and self.OutfitCollection.OutfitList
 			   and self.OutfitCollection.OutfitList.ScrollBox then
 				self.OutfitCollection.OutfitList.ScrollBox:ForEachFrame(function(frame)
@@ -308,7 +304,6 @@ function MCUDR_FrameMixin:OnShow()
 					end
 				end);
 			end
-			-- Clear inspected class filter and restore to player's class
 			local addonNS = MCUDressingRoomFrame._addonNS;
 			if addonNS then
 				addonNS.drPreviewClassID = nil;
@@ -326,7 +321,6 @@ function MCUDR_FrameMixin:OnShow()
 			end);
 		end);
 
-		-- Undress: strip all items from the model
 		local undressBtn = CreateFrame("Button", nil, btnBar, "UIPanelButtonTemplate");
 		undressBtn:SetSize(btnW, btnH);
 		undressBtn:SetPoint("LEFT", resetBtn, "RIGHT", 8, 0);
@@ -345,7 +339,6 @@ function MCUDR_FrameMixin:OnShow()
 			end);
 		end);
 
-		-- Link: share the last previewed item in chat
 		local linkBtn = CreateFrame("Button", nil, btnBar, "UIPanelButtonTemplate");
 		linkBtn:SetSize(btnW, btnH);
 		linkBtn:SetPoint("LEFT", undressBtn, "RIGHT", 8, 0);
@@ -358,7 +351,6 @@ function MCUDR_FrameMixin:OnShow()
 			end
 		end);
 
-		-- Mounts: switch to mount preview mode
 		local mountsBtn = CreateFrame("Button", nil, btnBar, "UIPanelButtonTemplate");
 		mountsBtn:SetSize(btnW, btnH);
 		mountsBtn:SetPoint("LEFT", linkBtn, "RIGHT", 8, 0);
@@ -366,7 +358,6 @@ function MCUDR_FrameMixin:OnShow()
 		mountsBtn:SetScript("OnClick", function()
 			local addonNS = MCUDressingRoomFrame._addonNS;
 			if addonNS and addonNS.PreviewMount then
-				-- Pick a default mount to preview (first collected, or first in list)
 				local defaultMountID
 				for i = 1, C_MountJournal.GetNumDisplayedMounts() do
 					local _, _, _, _, _, _, _, _, _, _, isCollected, mountID = C_MountJournal.GetDisplayedMountInfo(i)
@@ -384,7 +375,19 @@ function MCUDR_FrameMixin:OnShow()
 			end
 		end);
 
-		-- Close
+		if C_HousingCatalog then
+			local furnitureBtn = CreateFrame("Button", nil, btnBar, "UIPanelButtonTemplate");
+			furnitureBtn:SetSize(btnW, btnH);
+			furnitureBtn:SetPoint("LEFT", mountsBtn, "RIGHT", 8, 0);
+			furnitureBtn:SetText("Furniture");
+			furnitureBtn:SetScript("OnClick", function()
+				local addonNS = MCUDressingRoomFrame._addonNS;
+				if addonNS and addonNS.EnterFurnitureMode then
+					addonNS:EnterFurnitureMode()
+				end
+			end);
+		end
+
 		local closeBtn = CreateFrame("Button", nil, btnBar, "UIPanelButtonTemplate");
 		closeBtn:SetSize(btnW, btnH);
 		closeBtn:SetPoint("BOTTOMRIGHT", -24, 12);
@@ -412,10 +415,8 @@ function MCUDR_FrameMixin:OnHide()
 		HelpPlate.Hide(userToggled);
 	end
 
-	-- Reset dressing room state
 	MCUDR_PreviewedSlots = {};
 
-	-- Clear inspected class filter and restore to player's class
 	local addonNS = self._addonNS;
 	if addonNS then
 		addonNS.drPreviewClassID = nil;
@@ -427,12 +428,15 @@ function MCUDR_FrameMixin:OnHide()
 		end
 	end
 
-	-- Clean up mount preview if active
 	if self.CharacterPreview and self.CharacterPreview.ModelScene then
 		local ms = self.CharacterPreview.ModelScene;
 		if ms._mountActor then
 			ms._mountActor:ClearModel();
 			ms._mountActor = nil;
+		end
+		if ms._furnitureActor then
+			ms._furnitureActor:ClearModel();
+			ms._furnitureActor = nil;
 		end
 		ms:TransitionToModelSceneID(290, CAMERA_TRANSITION_TYPE_IMMEDIATE, CAMERA_MODIFICATION_TYPE_DISCARD, true);
 	end
@@ -440,7 +444,12 @@ function MCUDR_FrameMixin:OnHide()
 		if self.CharacterPreview.MountNameLabel then
 			self.CharacterPreview.MountNameLabel:Hide();
 		end
-		-- Restore camera controls to default position
+		if self.CharacterPreview.FurnitureNameLabel then
+			self.CharacterPreview.FurnitureNameLabel:Hide();
+		end
+		if self.CharacterPreview.FurnitureIconFallback then
+			self.CharacterPreview.FurnitureIconFallback:Hide();
+		end
 		local controlFrame = self.CharacterPreview.ModelScene and self.CharacterPreview.ModelScene.ControlFrame;
 		if controlFrame then
 			controlFrame:ClearAllPoints();
@@ -448,13 +457,14 @@ function MCUDR_FrameMixin:OnHide()
 		end
 	end
 
-	-- Hide mount collection and restore appearances
 	local addonNS = self._addonNS;
 	if addonNS and addonNS.HideMountCollection then
 		addonNS:HideMountCollection();
 	end
+	if addonNS and addonNS.HideFurnitureCollection then
+		addonNS:HideFurnitureCollection();
+	end
 
-	-- Reset the model back to equipped gear
 	if self.CharacterPreview and self.CharacterPreview.ModelScene then
 		local actor = self.CharacterPreview.ModelScene:GetPlayerActor();
 		if actor then
@@ -464,12 +474,10 @@ function MCUDR_FrameMixin:OnHide()
 		end
 	end
 
-	-- Reset slot icons to equipped items
 	if self.CharacterPreview and self.CharacterPreview.RefreshDressingRoomSlots then
 		self.CharacterPreview:RefreshDressingRoomSlots();
 	end
 
-	-- Deselect any highlighted saved appearance
 	if self.OutfitCollection and self.OutfitCollection.OutfitList
 	   and self.OutfitCollection.OutfitList.ScrollBox then
 		self.OutfitCollection.OutfitList.ScrollBox:ForEachFrame(function(frame)
@@ -507,7 +515,6 @@ end
 function MCUDR_FrameMixin:RefreshOutfits(selectActiveOutfit)
 	local dataProvider = CreateDataProvider();
 
-	-- Show custom sets (saved dressing room appearances) instead of transmog outfits
 	if C_TransmogCollection and C_TransmogCollection.GetCustomSets then
 		local setIDs = C_TransmogCollection.GetCustomSets();
 		if setIDs then
@@ -518,15 +525,14 @@ function MCUDR_FrameMixin:RefreshOutfits(selectActiveOutfit)
 						local infoList = C_TransmogCollection.GetCustomSetItemTransmogInfoList(setID);
 						local actor = self.CharacterPreview.ModelScene:GetPlayerActor();
 						if actor and infoList then
-							-- Using global MCUDR_PreviewedSlots directly
-							MCUDR_PreviewedSlots = {};
+								MCUDR_PreviewedSlots = {};
 
 							for slotID, info in pairs(infoList) do
 								actor:SetItemTransmogInfo(info, slotID);
 								if info.appearanceID and info.appearanceID > 0 then
 									local sourceInfo = C_TransmogCollection.GetSourceInfo(info.appearanceID);
 									local itemIcon;
-									-- GetSourceInfo doesn't reliably return icon; get it from the item
+									-- GetSourceInfo doesn't reliably return icon; get it from the item instead
 									if sourceInfo then
 										local itemID = sourceInfo.itemID or C_TransmogCollection.GetSourceItemID(info.appearanceID);
 										if itemID then
@@ -580,8 +586,6 @@ function MCUDR_FrameMixin:RefreshOutfits(selectActiveOutfit)
 				end;
 
 				local onEditCallback = function()
-					-- Custom sets don't support rename/icon change via API,
-					-- so we delete and recreate with a new name
 					StaticPopup_Show("MCU_DR_RENAME_CUSTOM_SET", setName, nil, {
 						setID = setID,
 						name = setName,
@@ -606,12 +610,10 @@ function MCUDR_FrameMixin:RefreshOutfits(selectActiveOutfit)
 end
 
 function MCUDR_FrameMixin:RefreshSlots()
-	-- Some action was done that could have changed slot info (weapon options, enabled state, etc.). Refresh things to reflect any new state.
 	local clearCurrentWeaponOptionInfo = false;
 	self.CharacterPreview:RefreshSlotWeaponOptions(clearCurrentWeaponOptionInfo);
 	self.CharacterPreview:RefreshSlots();
 
-	-- Update collection in case the selected slot changed.
 	self.WardrobeCollection:UpdateSlot(self.CharacterPreview:GetSelectedSlotData());
 end
 
@@ -646,14 +648,10 @@ function MCUDR_FrameMixin:RefreshHelpPlate()
 end
 
 function MCUDR_FrameMixin:UpdateCostDisplay()
-	-- No cost display in dressing room mode
 end
 
 function MCUDR_FrameMixin:SelectSlot(slotFrame, forceRefresh)
-	-- Visually update selected slot
 	self.CharacterPreview:UpdateSlot(slotFrame.slotData, forceRefresh);
-
-	-- Navigate to correct items in collection.
 	self.WardrobeCollection:UpdateSlot(slotFrame.slotData, forceRefresh);
 end
 
@@ -824,7 +822,6 @@ StaticPopupDialogs["MCU_DR_DELETE_CUSTOM_SET"] = {
 };
 
 function MCUDR_OutfitCollectionMixin:InitSaveOutfitElements()
-	-- Hide transmog-specific save/money elements in dressing room mode
 	if self.SaveOutfitButton then self.SaveOutfitButton:Hide(); end
 	if self.MoneyFrame then self.MoneyFrame:Hide(); end
 end
@@ -875,12 +872,10 @@ function MCUDR_OutfitCollectionMixin:Refresh(dataProvider, selectActiveOutfit)
 		outfitID = firstElementData.outfitID;
 	end
 
-	-- Make sure to set the viewed outfit when first opening the frame, otherwise only call if it changed.
 	if selectActiveOutfit or outfitID ~= viewedOutfitID then
 		C_TransmogOutfitInfo.ChangeViewedOutfit(outfitID);
 	end
 
-	-- Check to see if we can purchase more outfits (the outfit list might now be at the max number of slots allowed).
 	local source = Enum.TransmogOutfitEntrySource.PlayerPurchased;
 	local unlockedOutfitCount = C_TransmogOutfitInfo.GetNumberOfOutfitsUnlockedForSource(source);
 	local maxOutfitCount = C_TransmogOutfitInfo.GetMaxNumberOfTotalOutfitsForSource(source);
@@ -890,7 +885,6 @@ function MCUDR_OutfitCollectionMixin:Refresh(dataProvider, selectActiveOutfit)
 	self.PurchaseOutfitButton:SetEnabled(hasOutfitsToPurchase);
 	self.PurchaseOutfitButton.Icon:SetDesaturated(not hasOutfitsToPurchase);
 
-	-- If we have no outfits to purchase, and can only select one outfit, collapse the outfit collection frame.
 	if(not hasOutfitsToPurchase and not hasOutfitsToSelect) then
 		self:Collapse();
 	end
@@ -935,7 +929,6 @@ function MCUDR_OutfitCollectionMixin:UpdateShowEquippedGearButton()
 	overlayFX.OverlayLocked:SetShown(isLockedOutfit);
 	overlayFX.OverlayLocked:ShowAutoCastEnabled(isLockedOutfit);
 
-	-- Trial of Style visuals
 	local inTransmogEvent = C_TransmogOutfitInfo.InTransmogEvent();
 	self.ShowEquippedGearSpellFrame.Button:SetEnabled(not inTransmogEvent);
 	self.ShowEquippedGearSpellFrame.Button.Icon:SetDesaturated(inTransmogEvent);
@@ -1062,7 +1055,6 @@ end
 
 MCUDR_OutfitPopupMixin = {};
 
--- Overridden.
 function MCUDR_OutfitPopupMixin:OnShow()
 	IconSelectorPopupFrameTemplateMixin.OnShow(self);
 
@@ -1076,21 +1068,18 @@ function MCUDR_OutfitPopupMixin:OnShow()
 	local function OnIconSelected(_selectionIndex, icon)
 		self.BorderBox.SelectedIconArea.SelectedIconButton:SetIconTexture(icon);
 
-		-- Index is not yet set, but we know if an icon in IconSelector was selected it was in the list, so set directly.
 		self.BorderBox.SelectedIconArea.SelectedIconText.SelectedIconDescription:SetText(ICON_SELECTION_CLICK);
 		self.BorderBox.SelectedIconArea.SelectedIconText.SelectedIconDescription:SetFontObject(GameFontHighlightSmall);
 	end
 	self.IconSelector:SetSelectedCallback(OnIconSelected);
 end
 
--- Overridden.
 function MCUDR_OutfitPopupMixin:OnHide()
 	IconSelectorPopupFrameTemplateMixin.OnHide(self);
 
 	self.outfitData = nil;
 end
 
--- Overridden.
 function MCUDR_OutfitPopupMixin:Update()
 	if self.mode == IconSelectorPopupFrameModes.New then
 		self.BorderBox.IconSelectorEditBox:SetText("");
@@ -1114,12 +1103,10 @@ function MCUDR_OutfitPopupMixin:Update()
 	self:SetSelectedIconText();
 end
 
--- Overridden.
 function MCUDR_OutfitPopupMixin:OkayButton_OnClick()
 	local iconTexture = self.BorderBox.SelectedIconArea.SelectedIconButton:GetIconTexture();
 	local text = self.BorderBox.IconSelectorEditBox:GetText();
 
-	-- Validate name.
 	if not C_TransmogOutfitInfo.IsValidTransmogOutfitName(text) then
 		local dialogData = {
 			mode = self.mode,
@@ -1225,10 +1212,9 @@ function MCUDR_CharacterMixin:OnShow()
 		self:RefreshDressingRoomSlots();
 	end);
 
-	-- Auto-select the first slot (head) so the appearances grid has something to show
+	-- Auto-select the first slot so the appearances grid has something to show
 	C_Timer.After(0.1, function()
 		if self.drSlotFrames then
-			-- Head slot (slotID=1, HEADSLOT)
 			local firstSlotID = 1;
 			local btn = self.drSlotFrames[firstSlotID];
 			if btn then
@@ -1239,18 +1225,15 @@ function MCUDR_CharacterMixin:OnShow()
 						transmogLoc = MCUDR_Util.CreateTransmogLocation(btn.slotName, Enum.TransmogType.Appearance, false);
 					end
 					if transmogLoc then
-						-- Update selectedSlotData for SelectVisual
 						self.selectedSlotData = {
 							transmogLocation = transmogLoc,
 							currentWeaponOptionInfo = { weaponOption = 0 },
 						};
-						-- Apply class filter if viewing another class's gear
 						local addonNS = MCUDressingRoomFrame._addonNS;
 						if addonNS and addonNS.drPreviewClassID and C_TransmogCollection.SetClassFilter then
 							C_TransmogCollection.SetClassFilter(addonNS.drPreviewClassID);
 						end
 						MCUDR_AppearancesFrame:SetActiveSlot(transmogLoc);
-						-- Navigate to previewed item if one exists
 						local preview = MCUDR_PreviewedSlots and MCUDR_PreviewedSlots[firstSlotID];
 						if preview and preview.sourceID then
 							MCUDR_AppearancesFrame:NavigateToSource(preview.sourceID, preview.name);
@@ -1287,12 +1270,10 @@ function MCUDR_CharacterMixin:RefreshDressingRoomSlots()
 			btn.Icon:SetDesaturated(false);
 			isPreviewing = true;
 		elseif equippedTex then
-			-- Show equipped item
 			btn.Icon:SetTexture(equippedTex);
 			btn.Icon:SetAlpha(1);
 			btn.Icon:SetDesaturated(false);
 		else
-			-- Empty slot
 			btn.Icon:SetTexture(136516);
 			btn.Icon:SetAlpha(0.3);
 			btn.Icon:SetDesaturated(true);
@@ -1349,7 +1330,6 @@ function MCUDR_CharacterMixin:HandleFormChanged()
 	end
 end
 
--- Dressing room: build slots directly without C_TransmogOutfitInfo or TransmogLocation
 local DR_SLOT_GROUPS = {
 	Left = {
 		{ slotID = 1,  name = "HEADSLOT" },
@@ -1373,7 +1353,6 @@ local DR_SLOT_GROUPS = {
 };
 
 function MCUDR_CharacterMixin:SetupSlots()
-	-- Release any existing slot frames from the pool
 	if self.CharacterAppearanceSlotFramePool then
 		self.CharacterAppearanceSlotFramePool:ReleaseAll();
 	end
@@ -1381,7 +1360,6 @@ function MCUDR_CharacterMixin:SetupSlots()
 		self.CharacterIllusionSlotFramePool:ReleaseAll();
 	end
 
-	-- Store simple slot frames we create (not using the complex pool/Init system)
 	self.drSlotFrames = self.drSlotFrames or {};
 	for _, f in pairs(self.drSlotFrames) do f:Hide(); end
 
@@ -1403,7 +1381,6 @@ function MCUDR_CharacterMixin:SetupSlots()
 				btn = CreateFrame("Button", nil, parentFrame);
 				btn:SetSize(59, 59);
 
-				-- Background dark fill (same as transmog slot)
 				local bg = btn:CreateTexture(nil, "BACKGROUND");
 				bg:SetSize(45, 45);
 				bg:SetPoint("CENTER");
@@ -1415,27 +1392,23 @@ function MCUDR_CharacterMixin:SetupSlots()
 				icon:SetTexCoord(0.08, 0.92, 0.08, 0.92);
 				btn.Icon = icon;
 
-				-- Default border
 				local border = btn:CreateTexture(nil, "BORDER");
 				border:SetAllPoints();
 				border:SetAtlas("transmog-gearslot-default");
 				btn.Border = border;
 
-				-- Selected border (shown when this slot is active)
 				local selBorder = btn:CreateTexture(nil, "OVERLAY");
 				selBorder:SetAllPoints();
 				selBorder:SetAtlas("transmog-gearslot-selected");
 				selBorder:Hide();
 				btn.SelectedBorder = selBorder;
 
-				-- Pending glow (shown when previewing a different item than equipped)
 				local pendingGlow = btn:CreateTexture(nil, "OVERLAY", nil, 1);
 				pendingGlow:SetAllPoints();
 				pendingGlow:SetAtlas("transmog-gearSlot-transmogrified-Glw");
 				pendingGlow:Hide();
 				btn.PendingGlow = pendingGlow;
 
-				-- Highlight
 				local hl = btn:CreateTexture(nil, "HIGHLIGHT");
 				hl:SetAllPoints();
 				hl:SetAtlas("transmog-gearslot-default");
@@ -1447,9 +1420,12 @@ function MCUDR_CharacterMixin:SetupSlots()
 
 				btn:SetScript("OnEnter", function(self)
 					GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-					-- Using global MCUDR_PreviewedSlots directly
 					local preview = MCUDR_PreviewedSlots and MCUDR_PreviewedSlots[self.slotID];
-					if preview and preview.name then
+					if preview and preview.link then
+						GameTooltip:SetHyperlink(preview.link);
+						GameTooltip:AddLine(" ");
+						GameTooltip:AddLine("Previewing", 0.5, 0.8, 1);
+					elseif preview and preview.name and preview.name ~= "" then
 						local r, g, b = GetItemQualityColor(preview.quality or 1);
 						GameTooltip:SetText(preview.name, r, g, b);
 						GameTooltip:AddLine("Previewing", 0.5, 0.8, 1);
@@ -1473,8 +1449,6 @@ function MCUDR_CharacterMixin:SetupSlots()
 						if actor then
 							PlaySound(SOUNDKIT.UI_TRANSMOG_REVERTING_GEAR_SLOT);
 							actor:DressPlayerSlot(self.slotID);
-							-- Clear preview state for this slot
-							-- Using global MCUDR_PreviewedSlots directly
 							if MCUDR_PreviewedSlots then
 								MCUDR_PreviewedSlots[self.slotID] = nil;
 							end
@@ -1487,7 +1461,6 @@ function MCUDR_CharacterMixin:SetupSlots()
 					else
 						PlaySound(SOUNDKIT.UI_TRANSMOG_GEAR_SLOT_CLICK);
 
-						-- Highlight this slot
 						local charPreview = MCUDressingRoomFrame and MCUDressingRoomFrame.CharacterPreview;
 						if charPreview and charPreview.drSlotFrames then
 							for _, sf in pairs(charPreview.drSlotFrames) do
@@ -1496,7 +1469,6 @@ function MCUDR_CharacterMixin:SetupSlots()
 						end
 						self.SelectedBorder:Show();
 
-						-- Navigate our standalone appearances grid to this slot's category
 						if MCUDR_AppearancesFrame then
 							local isSecondary = (self.slotName == "SECONDARYHANDSLOT")
 							local transmogLoc = MCUDR_Util.GetTransmogLocation(self.slotName, Enum.TransmogType.Appearance, isSecondary);
@@ -1504,7 +1476,6 @@ function MCUDR_CharacterMixin:SetupSlots()
 								transmogLoc = MCUDR_Util.CreateTransmogLocation(self.slotName, Enum.TransmogType.Appearance, isSecondary);
 							end
 							if transmogLoc then
-								-- Update selectedSlotData so SelectVisual applies to the correct slot
 								if charPreview then
 									charPreview.selectedSlotData = {
 										transmogLocation = transmogLoc,
@@ -1512,7 +1483,6 @@ function MCUDR_CharacterMixin:SetupSlots()
 									};
 								end
 
-								-- Detect weapon category from the previewed item
 								local preview = MCUDR_PreviewedSlots and MCUDR_PreviewedSlots[self.slotID];
 								local weaponCategory = nil;
 								if preview and preview.sourceID then
@@ -1525,7 +1495,6 @@ function MCUDR_CharacterMixin:SetupSlots()
 									end
 								end
 
-								-- If viewing another class's gear, apply the class filter
 								local addonNS = MCUDressingRoomFrame._addonNS;
 								if addonNS and addonNS.drPreviewClassID and C_TransmogCollection.SetClassFilter then
 									C_TransmogCollection.SetClassFilter(addonNS.drPreviewClassID);
@@ -1533,7 +1502,6 @@ function MCUDR_CharacterMixin:SetupSlots()
 
 								MCUDR_AppearancesFrame:SetActiveSlot(transmogLoc, weaponCategory);
 
-								-- If this slot has a previewed item, navigate to it and highlight it
 								if preview and preview.sourceID then
 									MCUDR_AppearancesFrame:NavigateToSource(preview.sourceID, preview.name);
 								else
@@ -1550,7 +1518,6 @@ function MCUDR_CharacterMixin:SetupSlots()
 			btn:SetParent(parentFrame);
 			btn.layoutIndex = index;
 
-			-- Set icon from equipped item
 			local tex = GetInventoryItemTexture("player", slotInfo.slotID);
 			if tex then
 				btn.Icon:SetTexture(tex);
@@ -1579,7 +1546,6 @@ function MCUDR_CharacterMixin:SetupSlotSection(groupData)
 		parentFrame = self.BottomSlots;
 	end
 
-	-- Appearance slots.
 	for index, appearanceInfo in ipairs(groupData.appearanceSlotInfo) do
 		local slotFrame = self.CharacterAppearanceSlotFramePool:Acquire();
 
@@ -1588,7 +1554,6 @@ function MCUDR_CharacterMixin:SetupSlotSection(groupData)
 			transmogLocation = transmogLocation,
 			transmogFrame = MCUDressingRoomFrame,
 			currentWeaponOptionInfo = nil,
-			-- Appearance specific fields.
 			weaponOptionsInfo = nil,
 			artifactOptionsInfo = nil
 		};
@@ -1675,7 +1640,6 @@ function MCUDR_CharacterMixin:RefreshSlots()
 	for slotFrame in self.CharacterAppearanceSlotFramePool:EnumerateActive() do
 		slotFrame:Update();
 
-		-- Slot that was selected is now disabled, will need to select a new slot.
 		local selectedSlotTransmogLocation = self.selectedSlotData and self.selectedSlotData.transmogLocation or nil;
 		local appearanceSlotTransmogLocation = slotFrame:GetTransmogLocation();
 		if appearanceSlotTransmogLocation and selectedSlotTransmogLocation and appearanceSlotTransmogLocation:IsEqual(selectedSlotTransmogLocation) and not slotFrame:IsEnabled() then
@@ -1695,17 +1659,14 @@ function MCUDR_CharacterMixin:RefreshSlots()
 		-- Only attempt to set a slot's appearance on the actor if this is not a secondary slot (the primary slot will handle things for it).
 		local linkedSlotInfo = C_TransmogOutfitInfo.GetLinkedSlotInfo(slotFrame.slotData.transmogLocation:GetSlot());
 		if not linkedSlotInfo or linkedSlotInfo.primarySlotInfo.slot == slotFrame.slotData.transmogLocation:GetSlot() then
-			-- Secondary slots.
 			local secondaryAppearanceID = Constants.Transmog.NoTransmogID;
 			if linkedSlotInfo then
-				-- Use primary slot option.
 				local outfitSlotInfo = C_TransmogOutfitInfo.GetViewedOutfitSlotInfo(linkedSlotInfo.secondarySlotInfo.slot, linkedSlotInfo.secondarySlotInfo.type, slotFrame:GetCurrentWeaponOptionInfo().weaponOption);
 				if outfitSlotInfo then
 					secondaryAppearanceID = outfitSlotInfo.transmogID;
 				end
 			end
 
-			-- Illusions.
 			local illusionID = Constants.Transmog.NoTransmogID;
 			if illusionSlotFrame then
 				local illusionSlotInfo = illusionSlotFrame:GetSlotInfo();
@@ -1723,7 +1684,6 @@ function MCUDR_CharacterMixin:RefreshSlots()
 					local itemTransmogInfo = ItemUtil.CreateItemTransmogInfo(appearanceID, secondaryAppearanceID, illusionID);
 					local currentItemTransmogInfo = actor:GetItemTransmogInfo(slotID);
 
-					-- Need the main category for mainhand.
 					local mainHandCategoryID;
 					local isLegionArtifact = false;
 					if transmogLocation:IsMainHand() then
@@ -1749,7 +1709,6 @@ function MCUDR_CharacterMixin:RefreshSlots()
 		end
 	end
 
-	-- Select valid slot now that everything has updated if needed.
 	if not self.selectedSlotData then
 		self:SetInitialSelectedSlot();
 	end
@@ -1822,7 +1781,6 @@ function MCUDR_CharacterMixin:UpdateSlot(slotData, forceRefresh)
 		end
 	elseif forceRefresh then
 		self.selectedSlotData = slotData;
-		-- Refresh the visuals on the actor.
 		self:RefreshSlots();
 	end
 end
@@ -1888,7 +1846,6 @@ function MCUDR_CharacterMixin:GetCurrentTransmogIcons()
 	return transmogIcons;
 end
 
--- Used for custom set data formats.
 function MCUDR_CharacterMixin:GetItemTransmogInfoList()
 	local actor = self.ModelScene:GetPlayerActor();
 	if not actor then
@@ -1953,26 +1910,20 @@ MCUDR_WardrobeMixin = {
 };
 
 function MCUDR_WardrobeMixin:OnLoad()
-	-- Hide the copied Transmog tab/content system — we use our own ported grid
 	if self.TabHeaders then self.TabHeaders:Hide(); end
 	if self.TabContent then self.TabContent:Hide(); end
 end
 
--- Standalone appearances grid (no embedding of Blizzard frames)
 function MCUDR_WardrobeMixin:InitAppearancesGrid()
 	if self._gridInitDone then return; end
 	self._gridInitDone = true;
 
-	-- The MCUDR_AppearancesFrame is created by DressingRoomWardrobe.xml
-	-- and should be a child of our WardrobeCollection panel in the DressingRoomFrame.xml.
-	-- If it's not parented there yet, find it and position it.
 	if MCUDR_AppearancesFrame then
 		MCUDR_AppearancesFrame:SetParent(self);
 		MCUDR_AppearancesFrame:ClearAllPoints();
 		MCUDR_AppearancesFrame:SetAllPoints(self);
 		MCUDR_AppearancesFrame:SetFrameLevel(self:GetFrameLevel() + 1);
 
-		-- Add extra rows (5 total = 30 models)
 		local grid = MCUDR_AppearancesFrame;
 		if grid.Models and grid.NUM_ROWS then
 			local numCols = grid.NUM_COLS or 6;
@@ -1987,14 +1938,12 @@ function MCUDR_WardrobeMixin:InitAppearancesGrid()
 							local model = CreateFrame("DressUpModel", nil, grid, "MCUDR_WardrobeModelTemplate");
 							model:ClearAllPoints();
 							if col == 0 then
-								-- First column: anchor below model above (matches XML pattern)
 								local aboveIndex = (newRow - 1) * numCols + 1;
 								local aboveModel = grid.Models[aboveIndex];
 								if aboveModel then
 									model:SetPoint("TOPLEFT", aboveModel, "BOTTOMLEFT", 0, -24);
 								end
 							else
-								-- Subsequent columns: anchor to the right of previous in same row
 								local leftModel = grid.Models[newIndex - 1];
 								if leftModel then
 									model:SetPoint("TOPLEFT", leftModel, "TOPRIGHT", 16, 0);
@@ -2011,16 +1960,13 @@ function MCUDR_WardrobeMixin:InitAppearancesGrid()
 			grid.PAGE_SIZE = targetCount;
 		end
 
-		-- Vertically center the grid in the panel
-		-- Model height=104, row gap=24, search bar~35px top, paging~33px bottom
 		local numRows = grid.NUM_ROWS or 3;
 		local gridHeight = numRows * 104 + (numRows - 1) * 24;
 		local panelHeight = self:GetHeight() or 860;
-		local topReserved = 35;   -- search/filter bar
-		local bottomReserved = 33; -- paging controls
+		local topReserved = 35;
+		local bottomReserved = 33;
 		local availableHeight = panelHeight - topReserved - bottomReserved;
 		local yOffset = -(topReserved + (availableHeight - gridHeight) / 2);
-		-- Reposition the first model to center the grid
 		local firstModel = grid.Models and grid.Models[1];
 		if firstModel then
 			firstModel:ClearAllPoints();
@@ -2223,7 +2169,6 @@ end
 function MCUDR_WardrobeItemsMixin:Init(wardrobeCollection)
 	self.wardrobeCollection = wardrobeCollection;
 
-	-- Ensure both collected and uncollected items are visible
 	-- Use individual setters instead of SetDefaultFilters to avoid event loops
 	if C_TransmogCollection.SetCollectedShown then
 		C_TransmogCollection.SetCollectedShown(true);
@@ -2315,8 +2260,6 @@ function MCUDR_WardrobeItemsMixin:RefreshActiveSlotTitle()
 	if selectedSlotData.transmogLocation:IsIllusion() then
 		slotName = WEAPON_ENCHANTMENT;
 	else
-		-- Use weapon option name if set.
-		-- Use different names if slots are split.
 		if selectedSlotData.currentWeaponOptionInfo.weaponOption ~= Enum.TransmogOutfitSlotOption.None then
 			slotName = selectedSlotData.currentWeaponOptionInfo.name;
 		elseif C_TransmogOutfitInfo.GetSecondarySlotState(selectedSlotData.transmogLocation:GetSlot()) then
@@ -2341,7 +2284,6 @@ function MCUDR_WardrobeItemsMixin:RefreshFilterButtons()
 	self.SearchBox:Show();
 	self.FilterButton:Show();
 
-	-- Reapply current search, in case the collection has changed.
 	self.SearchBox:UpdateSearch();
 end
 
@@ -2372,7 +2314,6 @@ function MCUDR_WardrobeItemsMixin:RefreshWeaponDropdown()
 		end
 	end
 
-	-- Only show weapon dropdown if there are more than 1 options to choose from.
 	if table.count(validCategories) <= 1 then
 		self.WeaponDropdown:Hide();
 		return;
@@ -2400,7 +2341,6 @@ function MCUDR_WardrobeItemsMixin:RefreshWeaponDropdown()
 end
 
 function MCUDR_WardrobeItemsMixin:RefreshDisplayTypeButtons()
-	-- Hidden in dressing room mode - all items always shown
 	if self.DisplayTypes then
 		self.DisplayTypes:Hide();
 	end
@@ -2424,7 +2364,6 @@ local function _OrigRefreshDisplayTypeButtons_Unused(self)
 		return;
 	end
 
-	-- Slightly different logic if the current weapon option is an artifact option.
 	local artifactOptionSelected = false;
 	if selectedSlotData.artifactOptionsInfo then
 		for _index, artifactOptionInfo in ipairs(selectedSlotData.artifactOptionsInfo) do
@@ -2482,7 +2421,6 @@ local function _OrigRefreshDisplayTypeButtons_Unused(self)
 			displayTypeButton.PendingFrame:Hide();
 		end
 
-		-- Do not show hover or click states when selected.
 		displayTypeButton:SetEnabled(not selected);
 	end
 
@@ -2493,7 +2431,6 @@ local function _OrigRefreshDisplayTypeButtons_Unused(self)
 		unassignedAtlas = C_TransmogOutfitInfo.GetUnassignedDisplayAtlasForSlot(selectedSlotData.transmogLocation:GetSlot());
 	end
 
-	-- Unassigned Button.
 	if unassignedButton:IsShown() then
 		local buttonText = artifactOptionSelected and TRANSMOG_SLOT_DISPLAY_TYPE_UNASSIGNED_ARTIFACT or TRANSMOG_SLOT_DISPLAY_TYPE_UNASSIGNED;
 		local tooltipText = artifactOptionSelected and TRANSMOG_SLOT_DISPLAY_TYPE_UNASSIGNED_ARTIFACT_TOOLTIP or TRANSMOG_SLOT_DISPLAY_TYPE_UNASSIGNED_TOOLTIP;
@@ -2512,7 +2449,6 @@ local function _OrigRefreshDisplayTypeButtons_Unused(self)
 		SetDisplayTypeButtonState(unassignedButton, isUnassigned);
 	end
 
-	-- Equipped Button.
 	if equippedButton:IsShown() then
 		local equippedIcon = equippedButton.IconFrame.Icon;
 		if outfitSlotInfo.warning ~= Enum.TransmogOutfitSlotWarning.Ok then
@@ -2561,14 +2497,11 @@ function MCUDR_WardrobeItemsMixin:RefreshCollectionEntries()
 	if self.transmogLocation:IsIllusion() then
 		self.itemCollectionEntries = C_TransmogCollection.GetIllusions();
 	else
-		-- Get appearances from the API
 		local rawEntries = C_TransmogCollection.GetCategoryAppearances(self.activeCategoryID, self.transmogLocation:GetData());
 
 		-- The Transmog API may filter out uncollected items based on filter state.
-		-- If uncollected items are missing, supplement with data from GetAppearanceSources
-		-- to include uncollected appearances (same approach the Collections UI uses internally).
+		-- Force uncollected shown and re-fetch if none are present.
 		if rawEntries then
-			-- Check if we're missing uncollected items by comparing count
 			local hasUncollected = false;
 			for _, entry in ipairs(rawEntries) do
 				if not entry.isCollected then
@@ -2578,12 +2511,10 @@ function MCUDR_WardrobeItemsMixin:RefreshCollectionEntries()
 			end
 
 			if not hasUncollected then
-				-- Force uncollected shown and re-fetch
 				local wasUncollected = C_TransmogCollection.GetUncollectedShown();
 				C_TransmogCollection.SetUncollectedShown(true);
 				rawEntries = C_TransmogCollection.GetCategoryAppearances(self.activeCategoryID, self.transmogLocation:GetData());
 				if not wasUncollected then
-					-- Restore original state after fetching
 					C_Timer.After(0, function()
 						C_TransmogCollection.SetUncollectedShown(wasUncollected);
 					end);
@@ -2669,13 +2600,11 @@ function MCUDR_WardrobeItemsMixin:UpdateSelectedVisualFromKeyPress(key)
 		return;
 	end
 
-	-- Keyboard navigation only works if selecting something in the paged grid.
 	local outfitSlotInfo = C_TransmogOutfitInfo.GetViewedOutfitSlotInfo(selectedSlotData.transmogLocation:GetSlot(), selectedSlotData.transmogLocation:GetType(), selectedSlotData.currentWeaponOptionInfo.weaponOption);
 	if not outfitSlotInfo or outfitSlotInfo.transmogID == NoTransmogID or outfitSlotInfo.displayType == Enum.TransmogOutfitDisplayType.Unassigned or outfitSlotInfo.displayType == Enum.TransmogOutfitDisplayType.Equipped then
 		return;
 	end
 
-	-- Get the current index relative to the entire displayed collection.
 	local startingIndex = self.PagedContent:FindIndexByPredicate(function(elementData)
 		if selectedSlotData.transmogLocation:IsAppearance() then
 			local mustBeUsable = true;
@@ -2687,12 +2616,10 @@ function MCUDR_WardrobeItemsMixin:UpdateSelectedVisualFromKeyPress(key)
 		end
 	end);
 
-	-- Could happen if the selected item is filtered out.
 	if startingIndex == nil then
 		return;
 	end
 
-	-- Find the updated target index that we should navigate to.
 	local contentSize = self.PagedContent:GetSize();
 	local templateKey = "COLLECTION_ITEM";
 	local viewIndex = 1;
@@ -2701,8 +2628,6 @@ function MCUDR_WardrobeItemsMixin:UpdateSelectedVisualFromKeyPress(key)
 		return;
 	end
 
-	-- If moving would go past the ends, cap to the end. If on the end to start, wrap to the other cap.
-	-- Moving up/down jumps a whole row.
 	local targetIndex = startingIndex;
 	if key == WARDROBE_PREV_VISUAL_KEY then
 		targetIndex = targetIndex - 1;
@@ -2738,7 +2663,6 @@ function MCUDR_WardrobeItemsMixin:UpdateSelectedVisualFromKeyPress(key)
 		return;
 	end
 
-	-- Select and page to new index.
 	local targetElementData = self.PagedContent:GetElementDataByIndex(targetIndex);
 	if self.transmogLocation:IsAppearance() then
 		local mustBeUsable = true;
@@ -2749,7 +2673,6 @@ function MCUDR_WardrobeItemsMixin:UpdateSelectedVisualFromKeyPress(key)
 			return;
 		end
 
-		-- Handles sparse cases, ensures things can be validly selected.
 		local item = Item:CreateFromItemID(itemID);
 		item:ContinueOnItemLoad(function()
 			-- Since the player may have run another key press while waiting here on a previous item, make sure the starting info is still the same to ensure a valid state.
@@ -2776,7 +2699,6 @@ function MCUDR_WardrobeItemsMixin:GetAnAppearanceSourceFromVisual(visualID, must
 	if sourceID == Constants.Transmog.NoTransmogID then
 		local sources = CollectionWardrobeUtil.GetSortedAppearanceSources(visualID, self.activeCategoryID, self.transmogLocation);
 		for _index, source in ipairs(sources) do
-			-- First 1 if it doesn't have to be usable
 			if not mustBeUsable or self:IsAppearanceUsableForActiveCategory(source) then
 				sourceID = source.sourceID;
 				break;
@@ -2954,7 +2876,6 @@ function MCUDR_WardrobeItemsMixin:SetActiveSlot(transmogLocation, forceRefresh)
 	self:SetTransmogLocation(transmogLocation);
 	local activeSlotInfo = self:GetActiveSlotInfo();
 
-	-- Figure out a category.
 	local categoryID;
 	local useLastWeaponCategory = not forceRefresh and self.transmogLocation:IsEitherHand() and self.lastWeaponCategoryID and self:IsValidWeaponCategoryForSlot(self.lastWeaponCategoryID);
 	if useLastWeaponCategory then
@@ -2969,7 +2890,6 @@ function MCUDR_WardrobeItemsMixin:SetActiveSlot(transmogLocation, forceRefresh)
 
 	if not categoryID then
 		if self.transmogLocation:IsEitherHand() then
-			-- Find the first valid weapon category.
 			for weaponCategoryID = FIRST_TRANSMOG_COLLECTION_WEAPON_TYPE, LAST_TRANSMOG_COLLECTION_WEAPON_TYPE do
 				if self:IsValidWeaponCategoryForSlot(weaponCategoryID) then
 					categoryID = weaponCategoryID;
@@ -3364,7 +3284,6 @@ function MCUDR_WardrobeCustomSetsMixin:HandleFormChanged()
 end
 
 function MCUDR_WardrobeCustomSetsMixin:RefreshNewCustomSetButton()
-	-- Enable the new custom set button if not at max custom sets, and there is at least 1 valid slot apperance to make a custom set from.
 	self.NewCustomSetButton.disabledTooltip = nil;
 
 	local customSets = C_TransmogCollection.GetCustomSets();
@@ -3540,7 +3459,6 @@ function MCUDR_WardrobeSituationsMixin:OnEvent(event, ...)
 end
 
 function MCUDR_WardrobeSituationsMixin:Init()
-	-- Set up situation dropdowns separately from any outfit's data.
 	self.SituationFramePool:ReleaseAll();
 
 	local situationsData = C_TransmogOutfitInfo.GetUISituationCategoriesAndOptions();
