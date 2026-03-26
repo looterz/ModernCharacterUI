@@ -44,6 +44,7 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Item level, specialization, and class-colored name display
 - Character, PvP, and Guild tabs matching the legacy inspect window
 - View in Dressing Room and View Talents buttons
+- View Mount button to preview the target's current mount in the dressing room
 - PvP tab shows honor level, arena ratings, solo shuffle, RBG, and blitz ratings
 - Guild tab shows tabard, name, faction, rank, and member count
 
