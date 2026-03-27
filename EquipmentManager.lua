@@ -8,7 +8,8 @@ StaticPopupDialogs["MCU_NEW_EQUIPMENT_SET"] = {
     button2 = CANCEL,
     hasEditBox = true,
     OnAccept = function(self)
-        local name = strtrim(self.editBox:GetText() or "")
+        local eb = self.editBox or (self.GetEditBox and self:GetEditBox())
+        local name = strtrim(eb and eb:GetText() or "")
         if name ~= "" then
             local icon = ns._pendingSetIcon or 132762
             C_EquipmentSet.CreateEquipmentSet(name, icon)
@@ -35,13 +36,15 @@ StaticPopupDialogs["MCU_RENAME_EQUIPMENT_SET"] = {
     hasEditBox = true,
     OnShow = function(self)
         local data = self.data
-        if data then
-            self.editBox:SetText(data.name or "")
-            self.editBox:HighlightText()
+        local eb = self.editBox or (self.GetEditBox and self:GetEditBox())
+        if data and eb then
+            eb:SetText(data.name or "")
+            eb:HighlightText()
         end
     end,
     OnAccept = function(self, data)
-        local newName = strtrim(self.editBox:GetText() or "")
+        local eb = self.editBox or (self.GetEditBox and self:GetEditBox())
+        local newName = strtrim(eb and eb:GetText() or "")
         if newName ~= "" and data then
             C_EquipmentSet.ModifyEquipmentSet(data.setID, newName, data.icon)
         end
@@ -207,9 +210,30 @@ local function CreateSetEntryButton()
         end
     end)
     btn:SetScript("OnLeave", function(self)
+        if self.delBtn:IsMouseOver() or self.editBtn:IsMouseOver() then
+            return
+        end
         self.delBtn:Hide()
         self.editBtn:Hide()
         GameTooltip:Hide()
+    end)
+
+    delBtn:SetScript("OnLeave", function(self)
+        local parent = self:GetParent()
+        if not parent:IsMouseOver() and not parent.editBtn:IsMouseOver() then
+            parent.delBtn:Hide()
+            parent.editBtn:Hide()
+            GameTooltip:Hide()
+        end
+    end)
+
+    editBtn:SetScript("OnLeave", function(self)
+        local parent = self:GetParent()
+        if not parent:IsMouseOver() and not parent.delBtn:IsMouseOver() then
+            parent.delBtn:Hide()
+            parent.editBtn:Hide()
+            GameTooltip:Hide()
+        end
     end)
 
     btn:SetScript("OnClick", function(self)

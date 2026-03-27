@@ -1252,13 +1252,22 @@ function ns:InitDressingRoomHooks()
         MCUDressingRoomFrame._addonNS = ns;
     end
 
-    -- Must pre-initialize: GetCatalogEntryInfoByItem fails on first use otherwise
-    if C_HousingCatalog then
+    -- Must pre-initialize: GetCatalogEntryInfoByItem fails on first use otherwise.
+    -- Also re-run on zone transitions (instance changes invalidate catalog data).
+    local function RefreshFurnitureCatalog()
+        if not C_HousingCatalog then return end
         EnsureFurnitureSearcher()
         if furnitureCatalogSearcher then
             furnitureCatalogSearcher:RunSearch()
         end
     end
+    RefreshFurnitureCatalog()
+
+    local catalogRefreshFrame = CreateFrame("Frame")
+    catalogRefreshFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    catalogRefreshFrame:SetScript("OnEvent", function()
+        RefreshFurnitureCatalog()
+    end)
 
     -- Pre-hook pattern: replace DressUp globals so Blizzard's DressUpFrame is
     -- never opened via ShowUIPanel. Post-hooks (hooksecurefunc) caused taint
