@@ -28,10 +28,11 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Click equipment slots to browse appearances, right-click to undress
 - Save and load custom outfit sets
 - Click any item slot being previewed to view it in your collection instantly
-- Mount preview mode with 3D model browser, search, and paging across all mounts in the game
-- Ctrl+click any mount link or click the Mounts button to browse and preview mounts
-- Housing furniture preview mode with 3D model browser, category filter, search, and paging
-- Ctrl+click any furniture item link or click the Furniture button to browse and preview housing decorations
+- Tab-based navigation: Character, Mounts, Pets, and Furniture modes
+- Mount preview with 3D model browser, search, and paging across all mounts
+- Battle pet preview with 3D model browser, search, and paging across all pets
+- Housing furniture preview with 3D model browser, category filter, search, and paging
+- Ctrl+click any mount, pet, or furniture link to preview it instantly
 
 ![Dressing Room](https://media.forgecdn.net/attachments/1599/282/wowscrnshot_032626_003031-jpg.jpg)
 
@@ -81,8 +82,10 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - **Rounded Equipment Icons**: Off — applies rounded corners to equipment slot icons
 - **Stats Panel Font Size**: 8-18 (default 12) — adjusts font size for stat labels and values
 - **Stats Header Font Size**: 8-20 (default 13) — adjusts font size for section headers
-- **Reputation Panel Font Size**: 8-18 (default 12) — adjusts font size for faction names and standing text
-- **Currency Panel Font Size**: 8-18 (default 12) — adjusts font size for currency names and quantities
+- **Reputation Panel Font Size**: 8-18 (default 16) — adjusts font size for faction names and standing text
+- **Reputation Category Font Size**: 8-24 (default 20) — adjusts font size for reputation category headers
+- **Currency Panel Font Size**: 8-18 (default 16) — adjusts font size for currency names and quantities
+- **Currency Category Font Size**: 8-24 (default 20) — adjusts font size for currency category headers
 - **Character Panel Scale**: 50-200% (default 100%)
 - **Inspect Window Scale**: 50-200% (default 100%)
 - **Dressing Room Scale**: 50-200% (default 100%)
@@ -93,6 +96,7 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - **`/mcu character`**: Toggle character panel
 - **`/mcu dress`**: Toggle dressing room
 - **`/mcu mounts`**: Open mount preview
+- **`/mcu pets`**: Open pet preview
 - **`/mcu furniture`**: Open furniture preview
 
 ## Feedback and Support

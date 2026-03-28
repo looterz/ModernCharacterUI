@@ -137,23 +137,27 @@
 				</Anchors>
 				<Frames>
 					<Button parentKey="PrevPageButton">
-						<Size x="28" y="28"/>
+						<Size x="32" y="32"/>
 						<Anchors>
 							<Anchor point="LEFT"/>
 						</Anchors>
-						<NormalTexture atlas="common-icon-rotateleft"/>
-						<HighlightTexture atlas="common-icon-rotateleft" alpha="0.4"/>
+						<NormalTexture file="Interface\Buttons\UI-SpellbookIcon-PrevPage-Up"/>
+						<PushedTexture file="Interface\Buttons\UI-SpellbookIcon-PrevPage-Down"/>
+						<DisabledTexture file="Interface\Buttons\UI-SpellbookIcon-PrevPage-Disabled"/>
+						<HighlightTexture file="Interface\Buttons\UI-Common-MouseHilight" alphaMode="ADD"/>
 						<Scripts>
 							<OnClick>self:GetParent():PreviousPage();</OnClick>
 						</Scripts>
 					</Button>
 					<Button parentKey="NextPageButton">
-						<Size x="28" y="28"/>
+						<Size x="32" y="32"/>
 						<Anchors>
 							<Anchor point="RIGHT"/>
 						</Anchors>
-						<NormalTexture atlas="common-icon-rotateright"/>
-						<HighlightTexture atlas="common-icon-rotateright" alpha="0.4"/>
+						<NormalTexture file="Interface\Buttons\UI-SpellbookIcon-NextPage-Up"/>
+						<PushedTexture file="Interface\Buttons\UI-SpellbookIcon-NextPage-Down"/>
+						<DisabledTexture file="Interface\Buttons\UI-SpellbookIcon-NextPage-Disabled"/>
+						<HighlightTexture file="Interface\Buttons\UI-Common-MouseHilight" alphaMode="ADD"/>
 						<Scripts>
 							<OnClick>self:GetParent():NextPage();</OnClick>
 						</Scripts>

@@ -249,8 +249,11 @@ function MCUDR_FrameMixin:OnShow()
 		resetBtn:SetSize(btnW, btnH);
 		resetBtn:SetPoint("BOTTOMLEFT", 24, 12);
 		resetBtn:SetText(RESET or "Reset");
-		resetBtn:SetScript("OnClick", function()
-			PlaySound(SOUNDKIT.UI_TRANSMOG_REVERTING_GEAR_SLOT);
+		-- Shared function to reset from mount/furniture mode back to character mode
+		local function ResetToCharacterMode()
+			if preview._characterButtons then
+				for _, btn in ipairs(preview._characterButtons) do btn:Show() end
+			end
 			if preview.ModelScene and preview.ModelScene._mountActor then
 				preview.ModelScene._mountActor:ClearModel();
 				preview.ModelScene._mountActor = nil;
@@ -258,6 +261,10 @@ function MCUDR_FrameMixin:OnShow()
 			if preview.ModelScene and preview.ModelScene._furnitureActor then
 				preview.ModelScene._furnitureActor:ClearModel();
 				preview.ModelScene._furnitureActor = nil;
+			end
+			if preview.ModelScene and preview.ModelScene._petActor then
+				preview.ModelScene._petActor:ClearModel();
+				preview.ModelScene._petActor = nil;
 			end
 			if preview.ModelScene then
 				preview.ModelScene:TransitionToModelSceneID(290, CAMERA_TRANSITION_TYPE_IMMEDIATE, CAMERA_MODIFICATION_TYPE_DISCARD, true);
@@ -271,27 +278,19 @@ function MCUDR_FrameMixin:OnShow()
 			if preview.drSlotFrames then
 				preview:SetupSlots();
 			end
-			if preview.MountNameLabel then
-				preview.MountNameLabel:Hide();
-			end
-			if preview.FurnitureNameLabel then
-				preview.FurnitureNameLabel:Hide();
-			end
-			if preview.FurnitureIconFallback then
-				preview.FurnitureIconFallback:Hide();
-			end
+			if preview.MountNameLabel then preview.MountNameLabel:Hide(); end
+			if preview.FurnitureNameLabel then preview.FurnitureNameLabel:Hide(); end
+			if preview.FurnitureIconFallback then preview.FurnitureIconFallback:Hide(); end
+			if preview.PetNameLabel then preview.PetNameLabel:Hide(); end
 			local controlFrame = preview.ModelScene and preview.ModelScene.ControlFrame;
 			if controlFrame then
 				controlFrame:ClearAllPoints();
 				controlFrame:SetPoint("TOP", 0, -18);
 			end
 			local addonNS = MCUDressingRoomFrame._addonNS;
-			if addonNS and addonNS.HideMountCollection then
-				addonNS:HideMountCollection();
-			end
-			if addonNS and addonNS.HideFurnitureCollection then
-				addonNS:HideFurnitureCollection();
-			end
+			if addonNS and addonNS.HideMountCollection then addonNS:HideMountCollection(); end
+			if addonNS and addonNS.HidePetCollection then addonNS:HidePetCollection(); end
+			if addonNS and addonNS.HideFurnitureCollection then addonNS:HideFurnitureCollection(); end
 			MCUDR_PreviewedSlots = {};
 			if self.OutfitCollection and self.OutfitCollection.OutfitList
 			   and self.OutfitCollection.OutfitList.ScrollBox then
@@ -304,21 +303,19 @@ function MCUDR_FrameMixin:OnShow()
 					end
 				end);
 			end
-			local addonNS = MCUDressingRoomFrame._addonNS;
-			if addonNS then
-				addonNS.drPreviewClassID = nil;
-			end
+			if addonNS then addonNS.drPreviewClassID = nil; end
 			if C_TransmogCollection.SetClassFilter then
 				local playerClassID = select(3, UnitClass("player"));
-				if playerClassID then
-					C_TransmogCollection.SetClassFilter(playerClassID);
-				end
+				if playerClassID then C_TransmogCollection.SetClassFilter(playerClassID); end
 			end
 			C_Timer.After(0.3, function()
-				if preview.RefreshDressingRoomSlots then
-					preview:RefreshDressingRoomSlots();
-				end
+				if preview.RefreshDressingRoomSlots then preview:RefreshDressingRoomSlots(); end
 			end);
+		end
+
+		resetBtn:SetScript("OnClick", function()
+			PlaySound(SOUNDKIT.UI_TRANSMOG_REVERTING_GEAR_SLOT);
+			ResetToCharacterMode();
 		end);
 
 		local undressBtn = CreateFrame("Button", nil, btnBar, "UIPanelButtonTemplate");
@@ -328,14 +325,10 @@ function MCUDR_FrameMixin:OnShow()
 		undressBtn:SetScript("OnClick", function()
 			PlaySound(SOUNDKIT.UI_TRANSMOG_REVERTING_GEAR_SLOT);
 			local actor = preview.ModelScene and preview.ModelScene:GetPlayerActor();
-			if actor then
-				actor:Undress();
-			end
+			if actor then actor:Undress(); end
 			MCUDR_PreviewedSlots = {};
 			C_Timer.After(0.3, function()
-				if preview.RefreshDressingRoomSlots then
-					preview:RefreshDressingRoomSlots();
-				end
+				if preview.RefreshDressingRoomSlots then preview:RefreshDressingRoomSlots(); end
 			end);
 		end);
 
@@ -345,55 +338,107 @@ function MCUDR_FrameMixin:OnShow()
 		linkBtn:SetText(LINK_BUTTON or "Link");
 		linkBtn:SetScript("OnClick", function()
 			local ns = MCUDressingRoomFrame._addonNS;
-			local lastLink = ns and ns.drLastLink;
-			if lastLink then
-				ChatEdit_InsertLink(lastLink);
-			end
+			if ns and ns.drLastLink then ChatEdit_InsertLink(ns.drLastLink); end
 		end);
-
-		local mountsBtn = CreateFrame("Button", nil, btnBar, "UIPanelButtonTemplate");
-		mountsBtn:SetSize(btnW, btnH);
-		mountsBtn:SetPoint("LEFT", linkBtn, "RIGHT", 8, 0);
-		mountsBtn:SetText("Mounts");
-		mountsBtn:SetScript("OnClick", function()
-			local addonNS = MCUDressingRoomFrame._addonNS;
-			if addonNS and addonNS.PreviewMount then
-				local defaultMountID
-				for i = 1, C_MountJournal.GetNumDisplayedMounts() do
-					local _, _, _, _, _, _, _, _, _, _, isCollected, mountID = C_MountJournal.GetDisplayedMountInfo(i)
-					if isCollected then
-						defaultMountID = mountID
-						break
-					end
-				end
-				if not defaultMountID then
-					defaultMountID = C_MountJournal.GetDisplayedMountID(1)
-				end
-				if defaultMountID then
-					addonNS:PreviewMount(defaultMountID)
-				end
-			end
-		end);
-
-		if C_HousingCatalog then
-			local furnitureBtn = CreateFrame("Button", nil, btnBar, "UIPanelButtonTemplate");
-			furnitureBtn:SetSize(btnW, btnH);
-			furnitureBtn:SetPoint("LEFT", mountsBtn, "RIGHT", 8, 0);
-			furnitureBtn:SetText("Furniture");
-			furnitureBtn:SetScript("OnClick", function()
-				local addonNS = MCUDressingRoomFrame._addonNS;
-				if addonNS and addonNS.EnterFurnitureMode then
-					addonNS:EnterFurnitureMode()
-				end
-			end);
-		end
 
 		local closeBtn = CreateFrame("Button", nil, btnBar, "UIPanelButtonTemplate");
 		closeBtn:SetSize(btnW, btnH);
 		closeBtn:SetPoint("BOTTOMRIGHT", -24, 12);
 		closeBtn:SetText(CLOSE or "Close");
-		closeBtn:SetScript("OnClick", function()
-			MCUDressingRoomFrame:Hide();
+		closeBtn:SetScript("OnClick", function() MCUDressingRoomFrame:Hide(); end);
+
+		-- Store character-mode-only buttons for tab switching
+		preview._characterButtons = { resetBtn, undressBtn, linkBtn };
+
+		local function HideCharacterElements()
+			if preview._characterButtons then
+				for _, btn in ipairs(preview._characterButtons) do btn:Hide() end
+			end
+			if preview.drSlotFrames then
+				for _, sf in pairs(preview.drSlotFrames) do sf:Hide() end
+			end
+		end
+
+		-- Tab-based navigation (Character / Mounts / Furniture)
+		local drTab1 = CreateFrame("Button", "MCUDressingRoomTab1", MCUDressingRoomFrame, "PanelTabButtonTemplate");
+		drTab1:SetID(1);
+		drTab1:SetText(CHARACTER or "Character");
+		drTab1:SetPoint("TOPLEFT", MCUDressingRoomFrame, "BOTTOMLEFT", 11, 2);
+		PanelTemplates_TabResize(drTab1, 0);
+
+		local drTab2 = CreateFrame("Button", "MCUDressingRoomTab2", MCUDressingRoomFrame, "PanelTabButtonTemplate");
+		drTab2:SetID(2);
+		drTab2:SetText("Mounts");
+		drTab2:SetPoint("TOPLEFT", drTab1, "TOPRIGHT", 1, 0);
+		PanelTemplates_TabResize(drTab2, 0);
+
+		local drTab3 = CreateFrame("Button", "MCUDressingRoomTab3", MCUDressingRoomFrame, "PanelTabButtonTemplate");
+		drTab3:SetID(3);
+		drTab3:SetText("Pets");
+		drTab3:SetPoint("TOPLEFT", drTab2, "TOPRIGHT", 1, 0);
+		PanelTemplates_TabResize(drTab3, 0);
+
+		local numTabs = 3;
+		local lastTab = drTab3;
+
+		drTab3:SetScript("OnClick", function()
+			PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB);
+			HideCharacterElements();
+			ResetToCharacterMode();
+			PanelTemplates_SetTab(MCUDressingRoomFrame, 3);
+			local addonNS = MCUDressingRoomFrame._addonNS;
+			if addonNS and addonNS.ShowPetCollection then
+				addonNS:ShowPetCollection(nil);
+				addonNS:EnterPetMode();
+			end
+		end);
+
+		if C_HousingCatalog then
+			local drTab4 = CreateFrame("Button", "MCUDressingRoomTab4", MCUDressingRoomFrame, "PanelTabButtonTemplate");
+			drTab4:SetID(4);
+			drTab4:SetText("Furniture");
+			drTab4:SetPoint("TOPLEFT", drTab3, "TOPRIGHT", 1, 0);
+			PanelTemplates_TabResize(drTab4, 0);
+			numTabs = 4;
+			lastTab = drTab4;
+
+			drTab4:SetScript("OnClick", function()
+				PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB);
+				HideCharacterElements();
+				ResetToCharacterMode();
+				PanelTemplates_SetTab(MCUDressingRoomFrame, 4);
+				local addonNS = MCUDressingRoomFrame._addonNS;
+				if addonNS and addonNS.EnterFurnitureMode then
+					addonNS:EnterFurnitureMode();
+				end
+			end);
+		end
+
+		MCUDressingRoomFrame.numTabs = numTabs;
+		PanelTemplates_SetNumTabs(MCUDressingRoomFrame, numTabs);
+		PanelTemplates_SetTab(MCUDressingRoomFrame, 1);
+
+		drTab1:SetScript("OnClick", function()
+			PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB);
+			ResetToCharacterMode();
+			PanelTemplates_SetTab(MCUDressingRoomFrame, 1);
+		end);
+
+		drTab2:SetScript("OnClick", function()
+			PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB);
+			HideCharacterElements();
+			ResetToCharacterMode();
+			PanelTemplates_SetTab(MCUDressingRoomFrame, 2);
+			local addonNS = MCUDressingRoomFrame._addonNS;
+			if addonNS and addonNS.PreviewMount then
+				local defaultMountID;
+				for i = 1, C_MountJournal.GetNumDisplayedMounts() do
+					local _, _, _, _, _, _, _, _, _, _, isCollected, mountID = C_MountJournal.GetDisplayedMountInfo(i);
+					if isCollected then defaultMountID = mountID; break; end
+				end
+				if not defaultMountID then defaultMountID = C_MountJournal.GetDisplayedMountID(1); end
+				if defaultMountID then addonNS:PreviewMount(defaultMountID); end
+			end
 		end);
 	end
 
@@ -403,6 +448,7 @@ end
 
 function MCUDR_FrameMixin:OnHide()
 	PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE);
+	PanelTemplates_SetTab(MCUDressingRoomFrame, 1);
 
 	FrameUtil.UnregisterFrameForEvents(self, self.DYNAMIC_EVENTS);
 
@@ -438,18 +484,17 @@ function MCUDR_FrameMixin:OnHide()
 			ms._furnitureActor:ClearModel();
 			ms._furnitureActor = nil;
 		end
+		if ms._petActor then
+			ms._petActor:ClearModel();
+			ms._petActor = nil;
+		end
 		ms:TransitionToModelSceneID(290, CAMERA_TRANSITION_TYPE_IMMEDIATE, CAMERA_MODIFICATION_TYPE_DISCARD, true);
 	end
 	if self.CharacterPreview then
-		if self.CharacterPreview.MountNameLabel then
-			self.CharacterPreview.MountNameLabel:Hide();
-		end
-		if self.CharacterPreview.FurnitureNameLabel then
-			self.CharacterPreview.FurnitureNameLabel:Hide();
-		end
-		if self.CharacterPreview.FurnitureIconFallback then
-			self.CharacterPreview.FurnitureIconFallback:Hide();
-		end
+		if self.CharacterPreview.MountNameLabel then self.CharacterPreview.MountNameLabel:Hide(); end
+		if self.CharacterPreview.FurnitureNameLabel then self.CharacterPreview.FurnitureNameLabel:Hide(); end
+		if self.CharacterPreview.FurnitureIconFallback then self.CharacterPreview.FurnitureIconFallback:Hide(); end
+		if self.CharacterPreview.PetNameLabel then self.CharacterPreview.PetNameLabel:Hide(); end
 		local controlFrame = self.CharacterPreview.ModelScene and self.CharacterPreview.ModelScene.ControlFrame;
 		if controlFrame then
 			controlFrame:ClearAllPoints();
@@ -458,12 +503,9 @@ function MCUDR_FrameMixin:OnHide()
 	end
 
 	local addonNS = self._addonNS;
-	if addonNS and addonNS.HideMountCollection then
-		addonNS:HideMountCollection();
-	end
-	if addonNS and addonNS.HideFurnitureCollection then
-		addonNS:HideFurnitureCollection();
-	end
+	if addonNS and addonNS.HideMountCollection then addonNS:HideMountCollection(); end
+	if addonNS and addonNS.HidePetCollection then addonNS:HidePetCollection(); end
+	if addonNS and addonNS.HideFurnitureCollection then addonNS:HideFurnitureCollection(); end
 
 	if self.CharacterPreview and self.CharacterPreview.ModelScene then
 		local actor = self.CharacterPreview.ModelScene:GetPlayerActor();

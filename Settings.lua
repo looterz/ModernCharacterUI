@@ -17,7 +17,9 @@ local defaults = {
         statsFontSize = 14,
         statsHeaderFontSize = 16,
         repFontSize = 16,
+        repHeaderFontSize = 20,
         currencyFontSize = 16,
+        currencyHeaderFontSize = 20,
         characterScale = 100,
         inspectScale = 100,
         dressingRoomScale = 100,
@@ -77,6 +79,10 @@ function MCU:ChatCommand(input)
             if defaultMountID then
                 ns:PreviewMount(defaultMountID)
             end
+        end
+    elseif (input == "pets" or input == "pet") then
+        if ns.EnterPetMode then
+            ns:EnterPetMode()
         end
     elseif (input == "furniture" or input == "housing" or input == "decor") then
         if ns.EnterFurnitureMode and C_HousingCatalog then
@@ -163,6 +169,13 @@ function MCU:GetOptions()
                 get = function() return self.db.global.repFontSize end,
                 set = function(_, v) self.db.global.repFontSize = v; ns:ApplyRepFontSize(); if ns.UpdateReputation then ns:UpdateReputation() end end,
             },
+            repHeaderFontSize = {
+                order = O(), type = "range", width = "full",
+                name = "Category Font Size", desc = "Font size for reputation category headers.",
+                min = 8, max = 24, step = 1,
+                get = function() return self.db.global.repHeaderFontSize end,
+                set = function(_, v) self.db.global.repHeaderFontSize = v; ns:ApplyRepFontSize(); if ns.UpdateReputation then ns:UpdateReputation() end end,
+            },
 
             -- Currency Tab
             currHeader = { order = O(), type = "header", name = "Currency Tab" },
@@ -172,6 +185,13 @@ function MCU:GetOptions()
                 min = 8, max = 18, step = 1,
                 get = function() return self.db.global.currencyFontSize end,
                 set = function(_, v) self.db.global.currencyFontSize = v; ns:ApplyCurrencyFontSize(); if ns.UpdateCurrency then ns:UpdateCurrency() end end,
+            },
+            currencyHeaderFontSize = {
+                order = O(), type = "range", width = "full",
+                name = "Category Font Size", desc = "Font size for currency category headers.",
+                min = 8, max = 24, step = 1,
+                get = function() return self.db.global.currencyHeaderFontSize end,
+                set = function(_, v) self.db.global.currencyHeaderFontSize = v; ns:ApplyCurrencyFontSize(); if ns.UpdateCurrency then ns:UpdateCurrency() end end,
             },
 
             -- Equipment Slots

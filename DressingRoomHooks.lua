@@ -42,6 +42,40 @@ local function ShowOurDressingRoom()
     end
 end
 
+local function CreateCollectionResetButton(collectionFrame, searchBox, refreshFunc, previewFirstFunc)
+    local cp = MCUDressingRoomFrame and MCUDressingRoomFrame.CharacterPreview
+    local btnParent = cp or collectionFrame
+    local btn = CreateFrame("Button", nil, btnParent, "UIPanelButtonTemplate")
+    btn:SetSize(80, 26)
+    btn:SetPoint("BOTTOMLEFT", btnParent, "BOTTOMLEFT", 24, 12)
+    btn:SetText(RESET or "Reset")
+    btn:SetFrameLevel(btnParent:GetFrameLevel() + 50)
+    btn:Hide()
+    btn:SetScript("OnClick", function()
+        PlaySound(SOUNDKIT.UI_TRANSMOG_REVERTING_GEAR_SLOT)
+        if searchBox then searchBox:SetText("") end
+        if refreshFunc then refreshFunc() end
+        if previewFirstFunc then previewFirstFunc() end
+    end)
+    collectionFrame._resetBtn = btn
+    collectionFrame:HookScript("OnShow", function() btn:Show() end)
+    collectionFrame:HookScript("OnHide", function() btn:Hide() end)
+    return btn
+end
+
+local function HideCharacterModeElements()
+    if not MCUDressingRoomFrame then return end
+    local cp = MCUDressingRoomFrame.CharacterPreview
+    if cp then
+        if cp.drSlotFrames then
+            for _, btn in pairs(cp.drSlotFrames) do btn:Hide() end
+        end
+        if cp._characterButtons then
+            for _, btn in ipairs(cp._characterButtons) do btn:Hide() end
+        end
+    end
+end
+
 local function GetModelScene()
     if not MCUDressingRoomFrame then return nil end
     local charPreview = MCUDressingRoomFrame.CharacterPreview
@@ -65,6 +99,7 @@ end
 
 local function PreviewMount(mountID)
     ShowOurDressingRoom()
+    if MCUDressingRoomFrame then PanelTemplates_SetTab(MCUDressingRoomFrame, 2) end
     if not mountID or not C_MountJournal then return end
 
     local creatureDisplayID, _, _, isSelfMount, _, modelSceneID, animID, spellVisualKitID, disablePlayerMountPreview =
@@ -72,6 +107,46 @@ local function PreviewMount(mountID)
     if not creatureDisplayID or creatureDisplayID == 0 then return end
 
     ns:ShowMountCollection(mountID)
+
+    -- If already in mount mode, just swap the actor without resetting camera/layout
+    local alreadyInMountMode = mountCollectionFrame and mountCollectionFrame:IsShown()
+        and MCUDressingRoomFrame.OutfitCollection and not MCUDressingRoomFrame.OutfitCollection:IsShown()
+    if alreadyInMountMode then
+        C_Timer.After(0.1, function()
+            local modelScene = GetModelScene()
+            if not modelScene then return end
+            if modelScene._mountActor then modelScene._mountActor:ClearModel(); modelScene._mountActor = nil end
+            modelScene:TransitionToModelSceneID(modelSceneID, CAMERA_TRANSITION_TYPE_IMMEDIATE, CAMERA_MODIFICATION_TYPE_DISCARD, true)
+            local mountActor = modelScene:CreateActor()
+            if mountActor then
+                modelScene._mountActor = mountActor
+                mountActor:SetModelByCreatureDisplayID(creatureDisplayID, true)
+                mountActor:SetUseCenterForOrigin(true, true, true)
+                if isSelfMount then
+                    mountActor:SetAnimationBlendOperation(Enum.ModelBlendOperation.None)
+                    mountActor:SetAnimation(618)
+                else
+                    mountActor:SetAnimationBlendOperation(Enum.ModelBlendOperation.Anim)
+                    mountActor:SetAnimation(0)
+                end
+                if spellVisualKitID and spellVisualKitID > 0 then
+                    mountActor:SetSpellVisualKit(spellVisualKitID)
+                end
+            end
+            local camera = modelScene:GetActiveCamera()
+            if camera then
+                camera:SetMinZoomDistance(1)
+                camera:SetMaxZoomDistance(camera:GetMaxZoomDistance() * 2.5)
+                camera:SetZoomDistance(12)
+            end
+            local cp = MCUDressingRoomFrame.CharacterPreview
+            if cp and cp.MountNameLabel then
+                local mountName = C_MountJournal.GetMountInfoByID(mountID)
+                cp.MountNameLabel:SetText(mountName or "")
+            end
+        end)
+        return
+    end
 
     local earlyScene = GetModelScene()
     if earlyScene then
@@ -85,6 +160,8 @@ local function PreviewMount(mountID)
             earlyActor:Hide()
         end
     end
+
+    HideCharacterModeElements()
 
     local outfitCollection = MCUDressingRoomFrame.OutfitCollection
     local charPreview = MCUDressingRoomFrame.CharacterPreview
@@ -166,7 +243,9 @@ local function PreviewMount(mountID)
 
         local camera = modelScene:GetActiveCamera()
         if camera then
+            camera:SetMinZoomDistance(1)
             camera:SetMaxZoomDistance(camera:GetMaxZoomDistance() * 2.5)
+            camera:SetZoomDistance(12)
         end
     end)
 end
@@ -246,6 +325,7 @@ local function UpdateMountModels()
             model.NewGlow:Hide()
             model.SlotInvalidTexture:Hide()
             model.DisabledOverlay:SetShown(not entry.isCollected)
+            if not entry.isCollected then model.DisabledOverlay:SetAlpha(0.4) end
             if model.HideVisual then model.HideVisual.Icon:Hide() end
         else
             model:Hide()
@@ -309,17 +389,19 @@ local function CreateMountCollectionFrame()
     local prevBtn = CreateFrame("Button", nil, pagingFrame)
     prevBtn:SetSize(28, 28)
     prevBtn:SetPoint("LEFT")
-    prevBtn:SetNormalAtlas("common-icon-rotateleft")
-    prevBtn:SetHighlightAtlas("common-icon-rotateleft")
-    prevBtn:GetHighlightTexture():SetAlpha(0.4)
+    prevBtn:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Up")
+    prevBtn:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Down")
+    prevBtn:SetDisabledTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Disabled")
+    prevBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
     prevBtn:SetScript("OnClick", function() pagingFrame:PreviousPage() end)
 
     local nextBtn = CreateFrame("Button", nil, pagingFrame)
     nextBtn:SetSize(28, 28)
     nextBtn:SetPoint("RIGHT")
-    nextBtn:SetNormalAtlas("common-icon-rotateright")
-    nextBtn:SetHighlightAtlas("common-icon-rotateright")
-    nextBtn:GetHighlightTexture():SetAlpha(0.4)
+    nextBtn:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
+    nextBtn:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Down")
+    nextBtn:SetDisabledTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Disabled")
+    nextBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
     nextBtn:SetScript("OnClick", function() pagingFrame:NextPage() end)
 
     pagingFrame.PrevPageButton = prevBtn
@@ -396,6 +478,14 @@ local function CreateMountCollectionFrame()
         if delta > 0 then pagingFrame:PreviousPage() else pagingFrame:NextPage() end
     end)
 
+    CreateCollectionResetButton(frame, search, RefreshMountGrid, function()
+        local list = frame.mountList
+        if list and #list > 0 then
+            currentPreviewMountID = list[1].mountID
+            PreviewMount(list[1].mountID)
+        end
+    end)
+
     mountCollectionFrame = frame
     return frame
 end
@@ -410,6 +500,7 @@ function ns:ShowMountCollection(mountID)
 
     if not alreadyShowing then
         if ns.HideFurnitureCollection then ns:HideFurnitureCollection(true) end
+        if ns.HidePetCollection then ns:HidePetCollection(true) end
         C_MountJournal.SetDefaultFilters()
         C_MountJournal.SetSearch("")
         if mountSearchBox then mountSearchBox:SetText("") end
@@ -436,6 +527,509 @@ function ns:HideMountCollection(skipLayoutRestore)
         end
     end
     currentPreviewMountID = nil
+
+    if not skipLayoutRestore then
+        if MCUDressingRoomFrame then
+            local outfitCollection = MCUDressingRoomFrame.OutfitCollection
+            local charPreview = MCUDressingRoomFrame.CharacterPreview
+            local wardrobeCollection = MCUDressingRoomFrame.WardrobeCollection
+            if outfitCollection and charPreview then
+                outfitCollection:Show()
+                charPreview:ClearAllPoints()
+                charPreview:SetPoint("TOPLEFT", outfitCollection, "TOPRIGHT", 0, 0)
+                charPreview:SetSize(658, 860)
+                if charPreview.Background then
+                    charPreview.Background:ClearAllPoints()
+                    charPreview.Background:SetPoint("TOPLEFT")
+                end
+                if wardrobeCollection then
+                    wardrobeCollection:ClearAllPoints()
+                    wardrobeCollection:SetPoint("TOPLEFT", charPreview, "TOPRIGHT", 0, 0)
+                end
+            end
+        end
+
+        if MCUDR_AppearancesFrame and MCUDressingRoomFrame and MCUDressingRoomFrame:IsShown() then
+            MCUDR_AppearancesFrame:Show()
+        end
+    end
+end
+
+local function GetPetInfoFromLink(link)
+    if not link or not C_PetJournal then return nil end
+    local linkType, linkOptions = LinkUtil.ExtractLink(link)
+    local linkID = linkOptions and LinkUtil.SplitLinkOptions(linkOptions)
+    if linkType == "battlepet" then
+        local speciesID = tonumber(linkID)
+        if speciesID then
+            local name, icon, petType, creatureID, sourceText, description, _, _, _, _, _, displayID = C_PetJournal.GetPetInfoBySpeciesID(speciesID)
+            if creatureID and displayID then
+                return { speciesID = speciesID, creatureID = creatureID, displayID = displayID, name = name, icon = icon }
+            end
+        end
+    elseif linkType == "item" then
+        local itemID = tonumber(linkID)
+        if itemID and C_PetJournal.GetPetInfoByItemID then
+            local _, _, _, creatureID, _, _, _, _, _, _, _, displayID, speciesID = C_PetJournal.GetPetInfoByItemID(itemID)
+            if creatureID and displayID then
+                local name, icon = C_PetJournal.GetPetInfoBySpeciesID(speciesID)
+                return { speciesID = speciesID, creatureID = creatureID, displayID = displayID, name = name, icon = icon }
+            end
+        end
+    end
+    return nil
+end
+
+local function PreviewPet(speciesID)
+    ShowOurDressingRoom()
+    if MCUDressingRoomFrame then PanelTemplates_SetTab(MCUDressingRoomFrame, 3) end
+    if not speciesID or not C_PetJournal then return end
+
+    local name, icon, petType, creatureID, sourceText, description, _, _, _, _, _, displayID = C_PetJournal.GetPetInfoBySpeciesID(speciesID)
+    if not creatureID or not displayID then return end
+
+    ns:ShowPetCollection(speciesID)
+
+    -- If already in pet mode, just swap the actor without resetting camera/layout
+    local alreadyInPetMode = petCollectionFrame and petCollectionFrame:IsShown()
+        and MCUDressingRoomFrame.OutfitCollection and not MCUDressingRoomFrame.OutfitCollection:IsShown()
+    if alreadyInPetMode then
+        C_Timer.After(0.1, function()
+            local modelScene = GetModelScene()
+            if not modelScene then return end
+            if modelScene._petActor then modelScene._petActor:ClearModel(); modelScene._petActor = nil end
+            local _, loadoutSceneID = C_PetJournal.GetPetModelSceneInfoBySpeciesID(speciesID)
+            if loadoutSceneID then
+                modelScene:SetViewInsets(0, 0, 50, 0)
+                modelScene:TransitionToModelSceneID(loadoutSceneID, CAMERA_TRANSITION_TYPE_IMMEDIATE, CAMERA_MODIFICATION_TYPE_DISCARD, true)
+            end
+            local petActor = modelScene:CreateActor()
+            if petActor then
+                modelScene._petActor = petActor
+                petActor:SetModelByCreatureDisplayID(displayID, true)
+                petActor:SetAnimationBlendOperation(Enum.ModelBlendOperation.None)
+                petActor:SetUseCenterForOrigin(true, true, true)
+            end
+            local camera = modelScene:GetActiveCamera()
+            if camera then
+                camera:SetMinZoomDistance(0)
+                camera:SetMaxZoomDistance(camera:GetMaxZoomDistance() * 10)
+                camera:SetZoomDistance(12)
+            end
+            local cp = MCUDressingRoomFrame.CharacterPreview
+            if cp and cp.PetNameLabel then
+                cp.PetNameLabel:SetText(name or "")
+            end
+        end)
+        return
+    end
+
+    local earlyScene = GetModelScene()
+    if earlyScene then
+        if earlyScene._mountActor then earlyScene._mountActor:ClearModel(); earlyScene._mountActor = nil end
+        if earlyScene._furnitureActor then earlyScene._furnitureActor:ClearModel(); earlyScene._furnitureActor = nil end
+        if earlyScene._petActor then earlyScene._petActor:ClearModel(); earlyScene._petActor = nil end
+        local earlyActor = earlyScene:GetPlayerActor()
+        if earlyActor then earlyActor:ClearModel(); earlyActor:Hide() end
+    end
+
+    HideCharacterModeElements()
+
+    local outfitCollection = MCUDressingRoomFrame.OutfitCollection
+    local charPreview = MCUDressingRoomFrame.CharacterPreview
+    local wardrobeCollection = MCUDressingRoomFrame.WardrobeCollection
+    if outfitCollection and charPreview and wardrobeCollection then
+        outfitCollection:Hide()
+        wardrobeCollection:ClearAllPoints()
+        wardrobeCollection:SetPoint("TOPRIGHT", MCUDressingRoomFrame, "TOPRIGHT", -2, -21)
+        charPreview:ClearAllPoints()
+        charPreview:SetPoint("TOPLEFT", MCUDressingRoomFrame, "TOPLEFT", 2, -21)
+        charPreview:SetPoint("TOPRIGHT", wardrobeCollection, "TOPLEFT", 0, 0)
+        charPreview:SetHeight(860)
+        if charPreview.Background then
+            charPreview.Background:ClearAllPoints()
+            charPreview.Background:SetAllPoints(charPreview)
+        end
+    end
+
+    C_Timer.After(0.3, function()
+        local modelScene = GetModelScene()
+        if not modelScene then return end
+
+        local playerActor = modelScene:GetPlayerActor()
+        if playerActor then playerActor:ClearModel(); playerActor:Hide() end
+
+        local cp = MCUDressingRoomFrame.CharacterPreview
+        if cp then
+            if cp.drSlotFrames then
+                for _, btn in pairs(cp.drSlotFrames) do btn:Hide() end
+            end
+            if not cp.PetNameLabel then
+                local label = cp:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+                label:SetPoint("TOP", cp, "TOP", 0, -12)
+                label:SetTextColor(1, 0.82, 0, 1)
+                cp.PetNameLabel = label
+            end
+            cp.PetNameLabel:SetText(name or "")
+            cp.PetNameLabel:Show()
+            if cp.MountNameLabel then cp.MountNameLabel:Hide() end
+            if cp.FurnitureNameLabel then cp.FurnitureNameLabel:Hide() end
+            local controlFrame = cp.ModelScene and cp.ModelScene.ControlFrame
+            if controlFrame then
+                controlFrame:ClearAllPoints()
+                controlFrame:SetPoint("TOP", cp.PetNameLabel, "BOTTOM", 0, -4)
+            end
+        end
+
+        local _, loadoutSceneID = C_PetJournal.GetPetModelSceneInfoBySpeciesID(speciesID)
+        if loadoutSceneID then
+            modelScene:SetViewInsets(0, 0, 50, 0)
+            modelScene:TransitionToModelSceneID(loadoutSceneID, CAMERA_TRANSITION_TYPE_IMMEDIATE, CAMERA_MODIFICATION_TYPE_DISCARD, true)
+        end
+
+        if modelScene._petActor then modelScene._petActor:ClearModel(); modelScene._petActor = nil end
+
+        local petActor = modelScene:CreateActor()
+        if petActor then
+            modelScene._petActor = petActor
+            petActor:SetModelByCreatureDisplayID(displayID, true)
+            petActor:SetAnimationBlendOperation(Enum.ModelBlendOperation.None)
+            petActor:SetUseCenterForOrigin(true, true, true)
+        end
+
+        local camera = modelScene:GetActiveCamera()
+        if camera then
+            camera:SetMinZoomDistance(1)
+            camera:SetMaxZoomDistance(camera:GetMaxZoomDistance() * 10)
+            camera:SetZoomDistance(12)
+        end
+    end)
+end
+
+function ns:PreviewPet(speciesID)
+    PreviewPet(speciesID)
+end
+
+local petCollectionFrame = nil
+local petSearchBox = nil
+local currentPreviewPetID = nil
+
+local PET_NUM_ROWS = 5
+local PET_NUM_COLS = 6
+local PET_PAGE_SIZE = PET_NUM_ROWS * PET_NUM_COLS
+
+local function GetPetList()
+    if not C_PetJournal then return {} end
+    local list = {}
+    local numPets = C_PetJournal.GetNumPets()
+    for i = 1, numPets do
+        local petID, speciesID, isOwned, customName, level, favorite, isRevoked, petName, icon, petType = C_PetJournal.GetPetInfoByIndex(i)
+        if speciesID then
+            local _, _, _, creatureID, sourceText, description, _, _, _, _, _, displayID = C_PetJournal.GetPetInfoBySpeciesID(speciesID)
+            list[#list + 1] = {
+                speciesID = speciesID,
+                petID = petID,
+                name = customName and customName ~= "" and format("%s (%s)", customName, petName) or petName or "",
+                displayName = petName or "",
+                customName = customName,
+                icon = icon,
+                isOwned = isOwned,
+                isFavorite = favorite,
+                level = level,
+                creatureID = creatureID or 0,
+                displayID = displayID or 0,
+                sourceText = sourceText or "",
+                description = description or "",
+            }
+        end
+    end
+    return list
+end
+
+local UpdatePetModels
+local RefreshPetCollection
+
+UpdatePetModels = function()
+    if not petCollectionFrame or not petCollectionFrame:IsShown() then return end
+    local frame = petCollectionFrame
+    local page = frame.PagingFrame:GetCurrentPage()
+    local offset = (page - 1) * PET_PAGE_SIZE
+
+    for i = 1, PET_PAGE_SIZE do
+        local model = frame.Models[i]
+        local entry = frame.petList[offset + i]
+        if entry then
+            model:Show()
+            if model._petSpeciesID ~= entry.speciesID then
+                if entry.displayID and entry.displayID > 0 then
+                    model:SetDisplayInfo(entry.displayID)
+                else
+                    model:SetCreature(entry.creatureID)
+                end
+                model._petSpeciesID = entry.speciesID
+            end
+            model.petData = entry
+
+            if not entry.isOwned then
+                model.Border:SetAtlas("transmog-wardrobe-border-uncollected")
+            else
+                model.Border:SetAtlas("transmog-wardrobe-border-collected")
+            end
+
+            model.TransmogStateTexture:SetShown(currentPreviewPetID ~= nil and entry.speciesID == currentPreviewPetID)
+            if model.Favorite then model.Favorite.Icon:SetShown(entry.isFavorite or false) end
+            model.NewString:Hide()
+            model.NewGlow:Hide()
+            model.SlotInvalidTexture:Hide()
+            model.DisabledOverlay:SetShown(not entry.isOwned)
+            if not entry.isOwned then model.DisabledOverlay:SetAlpha(0.4) end
+            if model.HideVisual then model.HideVisual.Icon:Hide() end
+        else
+            model:Hide()
+            model._petSpeciesID = nil
+            model.petData = nil
+        end
+    end
+end
+
+RefreshPetCollection = function()
+    if not petCollectionFrame or not petCollectionFrame:IsShown() then return end
+    local frame = petCollectionFrame
+    frame.petList = GetPetList()
+    frame.PagingFrame:SetMaxPages(max(1, ceil(#frame.petList / PET_PAGE_SIZE)))
+    UpdatePetModels()
+end
+
+local function NavigateToPet(speciesID)
+    if not petCollectionFrame or not speciesID then return end
+    local frame = petCollectionFrame
+    if not frame.petList then return end
+    for i, entry in ipairs(frame.petList) do
+        if entry.speciesID == speciesID then
+            frame.PagingFrame:SetCurrentPage(ceil(i / PET_PAGE_SIZE))
+            break
+        end
+    end
+    UpdatePetModels()
+end
+
+local function CreatePetCollectionFrame()
+    if petCollectionFrame then return petCollectionFrame end
+    local parent = MCUDressingRoomFrame.WardrobeCollection
+
+    local frame = CreateFrame("Frame", nil, parent)
+    frame:SetAllPoints()
+    frame:SetFrameLevel(parent:GetFrameLevel() + 2)
+    frame:Hide()
+    frame.petList = {}
+
+    local search = CreateFrame("EditBox", nil, frame, "SearchBoxTemplate")
+    search:SetSize(260, 20)
+    search:SetPoint("TOP", 0, -110)
+    search:SetAutoFocus(false)
+    search:SetScript("OnTextChanged", function(self)
+        SearchBoxTemplate_OnTextChanged(self)
+        C_PetJournal.SetSearchFilter(strtrim(self:GetText() or ""))
+        RefreshPetCollection()
+    end)
+    petSearchBox = search
+
+    local pagingFrame = CreateFrame("Frame", nil, frame)
+    pagingFrame:SetSize(120, 28)
+    pagingFrame:SetPoint("BOTTOM", 0, 8)
+    Mixin(pagingFrame, MCUDR_PagingMixin)
+    pagingFrame:OnLoad()
+
+    local pageText = pagingFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    pageText:SetPoint("CENTER")
+    pagingFrame.PageText = pageText
+
+    local prevBtn = CreateFrame("Button", nil, pagingFrame)
+    prevBtn:SetSize(28, 28); prevBtn:SetPoint("LEFT")
+    prevBtn:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Up")
+    prevBtn:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Down")
+    prevBtn:SetDisabledTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Disabled")
+    prevBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    prevBtn:SetScript("OnClick", function() pagingFrame:PreviousPage() end)
+
+    local nextBtn = CreateFrame("Button", nil, pagingFrame)
+    nextBtn:SetSize(28, 28); nextBtn:SetPoint("RIGHT")
+    nextBtn:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
+    nextBtn:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Down")
+    nextBtn:SetDisabledTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Disabled")
+    nextBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    nextBtn:SetScript("OnClick", function() pagingFrame:NextPage() end)
+
+    pagingFrame.PrevPageButton = prevBtn; pagingFrame.NextPageButton = nextBtn
+    local origUpdate = pagingFrame.Update
+    pagingFrame.Update = function(self)
+        if origUpdate then origUpdate(self) end
+        self.PageText:SetText(self.currentPage .. " / " .. self.maxPages)
+        self.PrevPageButton:SetEnabled(self.currentPage > 1)
+        self.NextPageButton:SetEnabled(self.currentPage < self.maxPages)
+    end
+    frame.PagingFrame = pagingFrame
+    frame.OnPageChanged = function() UpdatePetModels() end
+
+    frame.Models = {}
+    local gridWidth = PET_NUM_COLS * 78 + (PET_NUM_COLS - 1) * 16
+    local gridHeight = PET_NUM_ROWS * 104 + (PET_NUM_ROWS - 1) * 24
+    local panelHeight = parent:GetHeight() or 860
+    local topReserved = 135; local bottomReserved = 40
+    local availableHeight = panelHeight - topReserved - bottomReserved
+    local gridOffsetY = -topReserved - max(0, (availableHeight - gridHeight) / 2)
+    local gridOffsetX = max(0, ((parent:GetWidth() or 644) - gridWidth) / 2)
+
+    for row = 0, PET_NUM_ROWS - 1 do
+        for col = 0, PET_NUM_COLS - 1 do
+            local idx = row * PET_NUM_COLS + col + 1
+            local model = CreateFrame("DressUpModel", nil, frame, "MCUDR_WardrobeModelTemplate")
+            model:SetPoint("TOPLEFT", frame, "TOPLEFT",
+                gridOffsetX + col * (78 + 16), gridOffsetY - row * (104 + 24))
+            model:Hide()
+
+            model:SetScript("OnMouseDown", function(self, button)
+                if button == "LeftButton" and self.petData then
+                    currentPreviewPetID = self.petData.speciesID
+                    PreviewPet(self.petData.speciesID)
+                end
+            end)
+
+            model:SetScript("OnEnter", function(self)
+                if not self.petData then return end
+                local d = self.petData
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(d.name or "", 1, 0.82, 0)
+                if d.description and d.description ~= "" then
+                    GameTooltip:AddLine(d.description, 1, 1, 1, true)
+                end
+                if d.sourceText and d.sourceText ~= "" then
+                    GameTooltip:AddLine(" ")
+                    GameTooltip:AddLine(d.sourceText, NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b, true)
+                end
+                if d.isOwned then
+                    if d.level then GameTooltip:AddLine(format("Level %d", d.level), 0.0, 1.0, 0.0) end
+                else
+                    GameTooltip:AddLine(" ")
+                    GameTooltip:AddLine(NOT_COLLECTED or "Not Collected", RED_FONT_COLOR.r, RED_FONT_COLOR.g, RED_FONT_COLOR.b)
+                end
+                GameTooltip:Show()
+            end)
+            model:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+            frame.Models[idx] = model
+        end
+    end
+
+    frame:EnableMouseWheel(true)
+    frame:SetScript("OnMouseWheel", function(_, delta)
+        if delta > 0 then pagingFrame:PreviousPage() else pagingFrame:NextPage() end
+    end)
+
+    frame:RegisterEvent("PET_JOURNAL_LIST_UPDATE")
+    frame:RegisterEvent("PET_JOURNAL_PET_DELETED")
+    frame:RegisterEvent("COMPANION_LEARNED")
+    frame:RegisterEvent("COMPANION_UNLEARNED")
+    frame:SetScript("OnEvent", function() RefreshPetCollection() end)
+
+    CreateCollectionResetButton(frame, search, RefreshPetCollection, function()
+        local list = frame.petList
+        if list and #list > 0 then
+            currentPreviewPetID = list[1].speciesID
+            PreviewPet(list[1].speciesID)
+        end
+    end)
+
+    petCollectionFrame = frame
+    return frame
+end
+
+function ns:ShowPetCollection(speciesID)
+    if not petCollectionFrame then CreatePetCollectionFrame() end
+
+    local alreadyShowing = petCollectionFrame:IsShown()
+    currentPreviewPetID = speciesID
+
+    if not alreadyShowing then
+        if ns.HideMountCollection then ns:HideMountCollection(true) end
+        if ns.HideFurnitureCollection then ns:HideFurnitureCollection(true) end
+        if MCUDR_AppearancesFrame then MCUDR_AppearancesFrame:Hide() end
+        if petSearchBox then petSearchBox:SetText(""); C_PetJournal.SetSearchFilter("") end
+        petCollectionFrame:Show()
+    end
+
+    RefreshPetCollection()
+    if speciesID then NavigateToPet(speciesID) end
+end
+
+function ns:EnterPetMode()
+    ShowOurDressingRoom()
+    if MCUDressingRoomFrame then PanelTemplates_SetTab(MCUDressingRoomFrame, 3) end
+
+    ns:ShowPetCollection(nil)
+
+    HideCharacterModeElements()
+
+    local outfitCollection = MCUDressingRoomFrame.OutfitCollection
+    local charPreview = MCUDressingRoomFrame.CharacterPreview
+    local wardrobeCollection = MCUDressingRoomFrame.WardrobeCollection
+    if outfitCollection and charPreview and wardrobeCollection then
+        outfitCollection:Hide()
+        wardrobeCollection:ClearAllPoints()
+        wardrobeCollection:SetPoint("TOPRIGHT", MCUDressingRoomFrame, "TOPRIGHT", -2, -21)
+        charPreview:ClearAllPoints()
+        charPreview:SetPoint("TOPLEFT", MCUDressingRoomFrame, "TOPLEFT", 2, -21)
+        charPreview:SetPoint("TOPRIGHT", wardrobeCollection, "TOPLEFT", 0, 0)
+        charPreview:SetHeight(860)
+        if charPreview.Background then
+            charPreview.Background:ClearAllPoints()
+            charPreview.Background:SetAllPoints(charPreview)
+        end
+    end
+
+    local earlyScene = GetModelScene()
+    if earlyScene then
+        local earlyActor = earlyScene:GetPlayerActor()
+        if earlyActor then earlyActor:ClearModel(); earlyActor:Hide() end
+    end
+
+    C_Timer.After(0.3, function()
+        local cp = MCUDressingRoomFrame and MCUDressingRoomFrame.CharacterPreview
+        if cp then
+            if cp.drSlotFrames then
+                for _, btn in pairs(cp.drSlotFrames) do btn:Hide() end
+            end
+            if not cp.PetNameLabel then
+                local label = cp:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+                label:SetPoint("TOP", cp, "TOP", 0, -12)
+                label:SetTextColor(1, 0.82, 0, 1)
+                cp.PetNameLabel = label
+            end
+            cp.PetNameLabel:SetText("Pet Collection")
+            cp.PetNameLabel:Show()
+            if cp.MountNameLabel then cp.MountNameLabel:Hide() end
+            if cp.FurnitureNameLabel then cp.FurnitureNameLabel:Hide() end
+            local controlFrame = cp.ModelScene and cp.ModelScene.ControlFrame
+            if controlFrame then
+                controlFrame:ClearAllPoints()
+                controlFrame:SetPoint("TOP", cp.PetNameLabel, "BOTTOM", 0, -4)
+            end
+        end
+
+        if not currentPreviewPetID and petCollectionFrame and petCollectionFrame.petList
+           and #petCollectionFrame.petList > 0 then
+            local first = petCollectionFrame.petList[1]
+            PreviewPet(first.speciesID)
+        end
+    end)
+end
+
+function ns:HidePetCollection(skipLayoutRestore)
+    if petCollectionFrame then
+        petCollectionFrame:Hide()
+        if petSearchBox then petSearchBox:SetText(""); C_PetJournal.SetSearchFilter("") end
+    end
+    currentPreviewPetID = nil
 
     if not skipLayoutRestore then
         if MCUDressingRoomFrame then
@@ -512,6 +1106,7 @@ end
 
 local function PreviewFurniture(entryID)
     ShowOurDressingRoom()
+    if MCUDressingRoomFrame then PanelTemplates_SetTab(MCUDressingRoomFrame, 4) end
     if not entryID or not C_HousingCatalog then return end
 
     local info = C_HousingCatalog.GetCatalogEntryInfo(entryID)
@@ -567,7 +1162,7 @@ local function PreviewFurniture(entryID)
 
             local camera = modelScene:GetActiveCamera()
             if camera then
-                camera:SetMaxZoomDistance(camera:GetMaxZoomDistance() * 2.5)
+                camera:SetMaxZoomDistance(camera:GetMaxZoomDistance() * 5)
             end
         end)
         return
@@ -589,6 +1184,8 @@ local function PreviewFurniture(entryID)
             earlyActor:Hide()
         end
     end
+
+    HideCharacterModeElements()
 
     local outfitCollection = MCUDressingRoomFrame.OutfitCollection
     local charPreview = MCUDressingRoomFrame.CharacterPreview
@@ -686,7 +1283,7 @@ local function PreviewFurniture(entryID)
 
         local camera = modelScene:GetActiveCamera()
         if camera then
-            camera:SetMaxZoomDistance(camera:GetMaxZoomDistance() * 2.5)
+            camera:SetMaxZoomDistance(camera:GetMaxZoomDistance() * 5)
         end
     end)
 end
@@ -774,7 +1371,6 @@ local function BuildFurnitureListFromResults()
     if not furnitureCatalogSearcher then return {} end
 
     local entryIDs = furnitureCatalogSearcher:GetCatalogSearchResults()
-    -- Fallback: search results may be empty if async callback hasn't fired yet
     if not entryIDs or #entryIDs == 0 then
         entryIDs = furnitureCatalogSearcher:GetAllSearchItems()
     end
@@ -862,6 +1458,7 @@ UpdateFurnitureModels = function()
             model.NewGlow:Hide()
             model.SlotInvalidTexture:Hide()
             model.DisabledOverlay:SetShown(not isOwned)
+            if not isOwned then model.DisabledOverlay:SetAlpha(0.4) end
             if model.HideVisual then model.HideVisual.Icon:Hide() end
         else
             model:Hide()
@@ -958,17 +1555,19 @@ local function CreateFurnitureCollectionFrame()
     local prevBtn = CreateFrame("Button", nil, pagingFrame)
     prevBtn:SetSize(28, 28)
     prevBtn:SetPoint("LEFT")
-    prevBtn:SetNormalAtlas("common-icon-rotateleft")
-    prevBtn:SetHighlightAtlas("common-icon-rotateleft")
-    prevBtn:GetHighlightTexture():SetAlpha(0.4)
+    prevBtn:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Up")
+    prevBtn:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Down")
+    prevBtn:SetDisabledTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Disabled")
+    prevBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
     prevBtn:SetScript("OnClick", function() pagingFrame:PreviousPage() end)
 
     local nextBtn = CreateFrame("Button", nil, pagingFrame)
     nextBtn:SetSize(28, 28)
     nextBtn:SetPoint("RIGHT")
-    nextBtn:SetNormalAtlas("common-icon-rotateright")
-    nextBtn:SetHighlightAtlas("common-icon-rotateright")
-    nextBtn:GetHighlightTexture():SetAlpha(0.4)
+    nextBtn:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
+    nextBtn:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Down")
+    nextBtn:SetDisabledTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Disabled")
+    nextBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
     nextBtn:SetScript("OnClick", function() pagingFrame:NextPage() end)
 
     pagingFrame.PrevPageButton = prevBtn
@@ -1048,6 +1647,14 @@ local function CreateFurnitureCollectionFrame()
         if delta > 0 then pagingFrame:PreviousPage() else pagingFrame:NextPage() end
     end)
 
+    CreateCollectionResetButton(frame, search, RefreshFurnitureCollection, function()
+        local list = frame.furnitureList
+        if list and #list > 0 then
+            currentPreviewFurnitureKey = FurnitureKey(list[1].entryID)
+            PreviewFurniture(list[1].entryID)
+        end
+    end)
+
     furnitureCollectionFrame = frame
     return frame
 end
@@ -1063,9 +1670,8 @@ function ns:ShowFurnitureCollection(entryID)
 
     if not alreadyShowing then
         if MCUDR_AppearancesFrame then MCUDR_AppearancesFrame:Hide() end
-        if mountCollectionFrame and mountCollectionFrame:IsShown() then
-            ns:HideMountCollection(true)
-        end
+        if mountCollectionFrame and mountCollectionFrame:IsShown() then ns:HideMountCollection(true) end
+        if petCollectionFrame and petCollectionFrame:IsShown() then ns:HidePetCollection(true) end
         if furnitureSearchBox then furnitureSearchBox:SetText("") end
         furnitureCollectionFrame:Show()
 
@@ -1118,8 +1724,11 @@ end
 function ns:EnterFurnitureMode()
     if not C_HousingCatalog then return end
     ShowOurDressingRoom()
+    if MCUDressingRoomFrame then PanelTemplates_SetTab(MCUDressingRoomFrame, 4) end
 
     ns:ShowFurnitureCollection(nil)
+
+    HideCharacterModeElements()
 
     local outfitCollection = MCUDressingRoomFrame.OutfitCollection
     local charPreview = MCUDressingRoomFrame.CharacterPreview
@@ -1279,6 +1888,11 @@ function ns:InitDressingRoomHooks()
             PreviewMount(mountID)
             return true
         end
+        local petInfo = GetPetInfoFromLink(link)
+        if petInfo then
+            PreviewPet(petInfo.speciesID)
+            return true
+        end
         local furnitureInfo = GetFurnitureInfoFromLink(link)
         if furnitureInfo then
             PreviewFurniture(furnitureInfo.entryID)
@@ -1346,9 +1960,13 @@ function ns:InitDressingRoomHooks()
 
     if DressUpBattlePet then
         local original = DressUpBattlePet
-        DressUpBattlePet = function(...)
-            if ShouldPassThrough() then return original(...) end
-            ShowOurDressingRoom()
+        DressUpBattlePet = function(creatureID, displayID, speciesID, ...)
+            if ShouldPassThrough() then return original(creatureID, displayID, speciesID, ...) end
+            if speciesID then
+                PreviewPet(speciesID)
+            else
+                ShowOurDressingRoom()
+            end
         end
     end
 

@@ -163,30 +163,28 @@ end
 
 function ns:ApplyRepFontSize()
     if not ns.db or not ns.db.global then return end
-    local fontSize = ns.db.global.repFontSize or 12
-    local barFontSize = max(fontSize - 2, 8)
-
+    local fontSize = ns.db.global.repFontSize or 16
     local barFontSize = max(fontSize - 1, 8)
     if ns.repEntries then
         for _, entry in ipairs(ns.repEntries) do
-            if entry.name then entry.name:SetFont(STANDARD_TEXT_FONT, fontSize, "OUTLINE") end
             if entry.barText then entry.barText:SetFont(STANDARD_TEXT_FONT, barFontSize, "OUTLINE") end
             if entry.standing then entry.standing:SetFont(STANDARD_TEXT_FONT, barFontSize, "OUTLINE") end
         end
     end
+    if ns.UpdateReputation then ns:UpdateReputation() end
 end
 
 function ns:ApplyCurrencyFontSize()
     if not ns.db or not ns.db.global then return end
-    local fontSize = ns.db.global.currencyFontSize or 12
+    local fontSize = ns.db.global.currencyFontSize or 16
 
     if ns.currEntries then
         for _, entry in ipairs(ns.currEntries) do
-            if entry.name then entry.name:SetFont(STANDARD_TEXT_FONT, fontSize, "") end
             if entry.qty then entry.qty:SetFont(STANDARD_TEXT_FONT, fontSize, "") end
             if entry.detail then entry.detail:SetFont(STANDARD_TEXT_FONT, max(fontSize - 1, 8), "") end
         end
     end
+    if ns.UpdateCurrency then ns:UpdateCurrency() end
 end
 
 function ns:ApplyIconStyle()

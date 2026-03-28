@@ -155,6 +155,11 @@ local function CreateEntry()
     star:Hide()
     entry.star = star
 
+    local spacer = CreateFrame("Frame", nil, entry)
+    spacer:SetSize(1, 1)
+    spacer:SetPoint("LEFT", entry, "LEFT", 0, 0)
+    entry.spacer = spacer
+
     local repFontSize = (ns.db and ns.db.global and ns.db.global.repFontSize) or 12
     local barFontSize = max(repFontSize - 1, 8)
 
@@ -353,7 +358,8 @@ function ns:UpdateReputation()
 
     local y   = 0
     local idx = 0
-    local visibleIdx = 0  -- for alternating stripes
+    local headerDepth = 0
+    local visibleIdx = 0
 
     for i = 1, numFactions do
         local fd = C_Reputation.GetFactionDataByIndex(i)
@@ -374,9 +380,16 @@ function ns:UpdateReputation()
             entries[idx] = entry
         end
 
+        if fd.isHeader and not fd.isChild then
+            headerDepth = 0
+        elseif fd.isHeader and fd.isChild then
+            headerDepth = 1
+        end
+
         local indent = 0
-        if fd.isChild then indent = INDENT end
-        if not fd.isHeader and not fd.isChild then indent = INDENT end
+        if fd.isHeader and fd.isChild then
+            indent = INDENT
+        end
 
         local h = isPureHeader and HEADER_HEIGHT or ENTRY_HEIGHT
         entry:SetHeight(h)
@@ -398,9 +411,16 @@ function ns:UpdateReputation()
         entry.bar:ClearAllPoints()
         entry.bar:SetHeight(BAR_HEIGHT)
         if fd.isHeader then
+            entry.spacer:SetWidth(1)
+            entry.spacer:ClearAllPoints()
+            entry.spacer:SetPoint("LEFT", entry, "LEFT", 0, 0)
             entry.bar:SetPoint("LEFT", entry.arrow, "RIGHT", 4, 0)
         else
-            entry.bar:SetPoint("LEFT", entry, "LEFT", 2, 0)
+            local spacerWidth = (headerDepth + 2) * INDENT
+            entry.spacer:SetWidth(spacerWidth)
+            entry.spacer:ClearAllPoints()
+            entry.spacer:SetPoint("LEFT", entry, "LEFT", 0, 0)
+            entry.bar:SetPoint("LEFT", entry.spacer, "RIGHT", 4, 0)
         end
         entry.bar:SetPoint("RIGHT", entry, "RIGHT", -2, 0)
 
@@ -423,6 +443,8 @@ function ns:UpdateReputation()
         end
 
         if isPureHeader then
+            local headerFontSize = (ns.db and ns.db.global and ns.db.global.repHeaderFontSize) or 20
+            entry.name:SetFont(STANDARD_TEXT_FONT, headerFontSize, "")
             entry.name:SetTextColor(1, 0.82, 0, 1)
             entry.bar:Hide()
             entry.standing:SetText("")
@@ -432,6 +454,8 @@ function ns:UpdateReputation()
         else
             visibleIdx = visibleIdx + 1
             entry.stripe:SetShown(visibleIdx % 2 == 0)
+            local repFontSize = (ns.db and ns.db.global and ns.db.global.repFontSize) or 16
+            entry.name:SetFont(STANDARD_TEXT_FONT, repFontSize, "OUTLINE")
             entry.name:SetTextColor(1, 1, 1, 1)
 
             local minVal, maxVal, curVal = 0, 1, 0

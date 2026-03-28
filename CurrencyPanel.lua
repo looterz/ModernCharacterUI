@@ -6,6 +6,24 @@ local HEADER_HEIGHT = 28
 local ENTRY_HEIGHT  = 28
 local INDENT_PER_DEPTH = 20
 local ICON_SIZE     = 22
+local BAR_HEIGHT    = 22
+
+local CURRENCY_BAR_COLORS = {
+    { threshold = 0.00, r = 0.24, g = 0.54, b = 1.00 },  -- Blue
+    { threshold = 0.25, r = 0.13, g = 0.80, b = 0.13 },  -- Green
+    { threshold = 0.50, r = 0.93, g = 0.80, b = 0.13 },  -- Yellow
+    { threshold = 0.75, r = 0.80, g = 0.13, b = 0.13 },  -- Dark Red
+}
+
+local function GetCurrencyBarColor(pct)
+    pct = max(0, min(1, pct))
+    for i = #CURRENCY_BAR_COLORS, 1, -1 do
+        if pct >= CURRENCY_BAR_COLORS[i].threshold then
+            return CURRENCY_BAR_COLORS[i]
+        end
+    end
+    return CURRENCY_BAR_COLORS[1]
+end
 
 local searchBox = CreateFrame("EditBox", nil, container, "SearchBoxTemplate")
 searchBox:SetSize(220, 20)
@@ -376,6 +394,80 @@ local function CreateEntry()
     hl:SetAllPoints()
     hl:SetColorTexture(1, 1, 1, 0.05)
 
+    -- Progress bar for capped currencies
+    local bar = CreateFrame("StatusBar", nil, entry)
+    bar:SetHeight(BAR_HEIGHT)
+    bar:SetPoint("LEFT", entry, "LEFT", 2, 0)
+    bar:SetPoint("RIGHT", entry, "RIGHT", -2, 0)
+    bar:SetStatusBarTexture("Interface\\RaidFrame\\Raid-Bar-Hp-Fill")
+    bar:GetStatusBarTexture():SetHorizTile(false)
+    bar:SetMinMaxValues(0, 1)
+    bar:SetValue(0)
+    bar:EnableMouse(false)
+    bar:Hide()
+
+    local barBg = bar:CreateTexture(nil, "BACKGROUND")
+    barBg:SetAllPoints()
+    barBg:SetColorTexture(0.08, 0.08, 0.10, 0.85)
+
+    local barBorderTop = bar:CreateTexture(nil, "OVERLAY", nil, -1)
+    barBorderTop:SetHeight(1)
+    barBorderTop:SetPoint("TOPLEFT", -1, 1)
+    barBorderTop:SetPoint("TOPRIGHT", 1, 1)
+    barBorderTop:SetColorTexture(0.3, 0.3, 0.3, 0.6)
+
+    local barBorderBot = bar:CreateTexture(nil, "OVERLAY", nil, -1)
+    barBorderBot:SetHeight(1)
+    barBorderBot:SetPoint("BOTTOMLEFT", -1, -1)
+    barBorderBot:SetPoint("BOTTOMRIGHT", 1, -1)
+    barBorderBot:SetColorTexture(0.3, 0.3, 0.3, 0.6)
+
+    local barBorderLeft = bar:CreateTexture(nil, "OVERLAY", nil, -1)
+    barBorderLeft:SetWidth(1)
+    barBorderLeft:SetPoint("TOPLEFT", -1, 1)
+    barBorderLeft:SetPoint("BOTTOMLEFT", -1, -1)
+    barBorderLeft:SetColorTexture(0.3, 0.3, 0.3, 0.6)
+
+    local barBorderRight = bar:CreateTexture(nil, "OVERLAY", nil, -1)
+    barBorderRight:SetWidth(1)
+    barBorderRight:SetPoint("TOPRIGHT", 1, 1)
+    barBorderRight:SetPoint("BOTTOMRIGHT", 1, -1)
+    barBorderRight:SetColorTexture(0.3, 0.3, 0.3, 0.6)
+
+    local barTextFrame = CreateFrame("Frame", nil, bar)
+    barTextFrame:SetAllPoints()
+    barTextFrame:SetFrameLevel(bar:GetFrameLevel() + 10)
+    barTextFrame:EnableMouse(false)
+
+    local barIcon = barTextFrame:CreateTexture(nil, "OVERLAY")
+    barIcon:SetSize(18, 18)
+    barIcon:SetPoint("LEFT", 6, 0)
+
+    local barName = barTextFrame:CreateFontString(nil, "OVERLAY")
+    barName:SetFont(STANDARD_TEXT_FONT, currFontSize, "OUTLINE")
+    barName:SetPoint("LEFT", barIcon, "RIGHT", 4, 0)
+    barName:SetPoint("RIGHT", barTextFrame, "CENTER", -10, 0)
+    barName:SetJustifyH("LEFT")
+    barName:SetWordWrap(false)
+
+    local barProgress = barTextFrame:CreateFontString(nil, "OVERLAY")
+    barProgress:SetFont(STANDARD_TEXT_FONT, max(8, currFontSize - 1), "OUTLINE")
+    barProgress:SetPoint("CENTER", 0, 0)
+    barProgress:SetJustifyH("CENTER")
+    barProgress:SetTextColor(0.9, 0.9, 0.9, 1)
+
+    local barLabel = barTextFrame:CreateFontString(nil, "OVERLAY")
+    barLabel:SetFont(STANDARD_TEXT_FONT, max(8, currFontSize - 1), "OUTLINE")
+    barLabel:SetPoint("RIGHT", -8, 0)
+    barLabel:SetJustifyH("RIGHT")
+    barLabel:SetTextColor(1, 1, 1, 0.9)
+
+    entry.bar = bar
+    entry.barIcon = barIcon
+    entry.barName = barName
+    entry.barProgress = barProgress
+    entry.barLabel = barLabel
+
     entry:SetScript("OnEnter", function(self)
         if self.currencyIndex and not self.isHeader then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -500,9 +592,12 @@ function ns:UpdateCurrency()
                 and "campaign_headericon_open"
                 or  "campaign_headericon_closed")
 
+            entry.name:Show()
             entry.name:ClearAllPoints()
             entry.name:SetPoint("LEFT", entry.arrow, "RIGHT", 4, 0)
             entry.name:SetPoint("RIGHT", entry, "RIGHT", -4, 0)
+            local headerFontSize = (ns.db and ns.db.global and ns.db.global.currencyHeaderFontSize) or 20
+            entry.name:SetFont(STANDARD_TEXT_FONT, headerFontSize, "")
             entry.name:SetText(info.name or "")
             entry.name:SetTextColor(1, 0.82, 0, 1)
 
@@ -511,37 +606,90 @@ function ns:UpdateCurrency()
             entry.tracked:Hide()
             entry.selBar:Hide()
             entry.stripe:Hide()
+            entry.bar:Hide()
         else
             visibleIdx = visibleIdx + 1
             entry.arrow:Hide()
+            local currFontSize = (ns.db and ns.db.global and ns.db.global.currencyFontSize) or 16
 
-            entry.icon:SetTexture(info.iconFileID)
-            entry.icon:SetPoint("LEFT", 4, 0)
-            entry.icon:Show()
-
-            entry.name:ClearAllPoints()
-            entry.name:SetPoint("LEFT", entry.icon, "RIGHT", 6, 0)
-            entry.name:SetPoint("RIGHT", entry.qty, "LEFT", -8, 0)
-            entry.name:SetText(info.name or "")
-
-            if (info.quantity or 0) == 0 then
-                entry.name:SetTextColor(DISABLED_FONT_COLOR.r,
-                    DISABLED_FONT_COLOR.g, DISABLED_FONT_COLOR.b)
-                entry.qty:SetTextColor(DISABLED_FONT_COLOR.r,
-                    DISABLED_FONT_COLOR.g, DISABLED_FONT_COLOR.b)
-            else
-                entry.name:SetTextColor(HIGHLIGHT_FONT_COLOR.r,
-                    HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
-                entry.qty:SetTextColor(HIGHLIGHT_FONT_COLOR.r,
-                    HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
+            -- Determine if this currency has a cap
+            local capCurrent, capMax, capLabel = 0, 0, nil
+            if (info.maxWeeklyQuantity or 0) > 0 then
+                capCurrent = info.quantityEarnedThisWeek or 0
+                capMax = info.maxWeeklyQuantity
+                capLabel = "Weekly"
+            elseif info.useTotalEarnedForMaxQty and (info.maxQuantity or 0) > 0 then
+                capCurrent = info.totalEarned or 0
+                capMax = info.maxQuantity
+                capLabel = "Season"
+            elseif (info.maxQuantity or 0) > 0 then
+                capCurrent = info.quantity or 0
+                capMax = info.maxQuantity
+                capLabel = "Max"
             end
 
-            entry.qty:SetText(BreakUpLargeNumbers(info.quantity or 0))
+            if capMax > 0 then
+                -- Bar mode for capped currencies
+                entry.icon:Hide()
+                entry.name:Hide()
+                entry.qty:Hide()
+                entry.tracked:Hide()
 
-            entry.tracked:SetShown(info.isShowInBackpack)
+                entry.bar:Show()
+                entry.bar:SetMinMaxValues(0, capMax)
+                entry.bar:SetValue(capCurrent)
+                local pct = capCurrent / capMax
+                local color = GetCurrencyBarColor(pct)
+                entry.bar:SetStatusBarColor(color.r, color.g, color.b, 0.85)
 
-            entry.selBar:SetShown(selectedIndex == i)
-            entry.stripe:SetShown(visibleIdx % 2 == 0)
+                entry.barIcon:SetTexture(info.iconFileID)
+                entry.barName:SetFont(STANDARD_TEXT_FONT, currFontSize, "OUTLINE")
+                entry.barName:SetText(info.name or "")
+                entry.barName:SetTextColor(1, 1, 1, 1)
+                local barFontSize = max(8, currFontSize - 1)
+                entry.barProgress:SetFont(STANDARD_TEXT_FONT, barFontSize, "OUTLINE")
+                entry.barProgress:SetText(format("%s / %s", BreakUpLargeNumbers(capCurrent), BreakUpLargeNumbers(capMax)))
+                entry.barLabel:SetFont(STANDARD_TEXT_FONT, barFontSize, "OUTLINE")
+                entry.barLabel:SetText(capLabel)
+
+                entry.selBar:SetShown(selectedIndex == i)
+                entry.stripe:Hide()
+            else
+                -- Normal mode for uncapped currencies
+                entry.bar:Hide()
+
+                entry.name:Show()
+                entry.name:SetFont(STANDARD_TEXT_FONT, currFontSize, "")
+
+                entry.icon:SetTexture(info.iconFileID)
+                entry.icon:SetPoint("LEFT", 4, 0)
+                entry.icon:Show()
+
+                entry.name:ClearAllPoints()
+                entry.name:SetPoint("LEFT", entry.icon, "RIGHT", 6, 0)
+                entry.name:SetPoint("RIGHT", entry.qty, "LEFT", -8, 0)
+                entry.name:SetText(info.name or "")
+
+                if (info.quantity or 0) == 0 then
+                    entry.name:SetTextColor(DISABLED_FONT_COLOR.r,
+                        DISABLED_FONT_COLOR.g, DISABLED_FONT_COLOR.b)
+                    entry.qty:SetTextColor(DISABLED_FONT_COLOR.r,
+                        DISABLED_FONT_COLOR.g, DISABLED_FONT_COLOR.b)
+                else
+                    entry.name:SetTextColor(HIGHLIGHT_FONT_COLOR.r,
+                        HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
+                    entry.qty:SetTextColor(HIGHLIGHT_FONT_COLOR.r,
+                        HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
+                end
+
+                entry.qty:SetText(BreakUpLargeNumbers(info.quantity or 0))
+                entry.qty:Show()
+
+                entry.tracked:SetShown(info.isShowInBackpack)
+
+                entry.selBar:SetShown(selectedIndex == i)
+                entry.stripe:SetShown(visibleIdx % 2 == 0)
+            end
         end
 
         entry:Show()
