@@ -12,13 +12,13 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Currency tab with search, filters, backpack tracking (Shift+click), and transfer log
 - Movement Speed tracking based on stats and the current movement mode
 
-![Character Panel](https://media.forgecdn.net/attachments/1599/278/wowscrnshot_032526_212636-jpg.jpg)
+![Character Panel](https://media.forgecdn.net/attachments/1603/225/wowscrnshot_032826_154237-jpg.jpg)
 
-![Character Panel PvP Mode](https://media.forgecdn.net/attachments/1599/276/wowscrnshot_032626_003633-jpg.jpg)
+![Character Panel PvP Mode](https://media.forgecdn.net/attachments/1603/230/wowscrnshot_032826_160100-jpg.jpg)
 
-![Reputation Tab](https://media.forgecdn.net/attachments/1599/279/wowscrnshot_032526_212642-jpg.jpg)
+![Reputation Tab](https://media.forgecdn.net/attachments/1603/224/wowscrnshot_032826_154243-jpg.jpg)
 
-![Currency Tab](https://media.forgecdn.net/attachments/1599/280/wowscrnshot_032526_212646-jpg.jpg)
+![Currency Tab](https://media.forgecdn.net/attachments/1603/223/wowscrnshot_032826_154250-jpg.jpg)
 
 ### Dressing Room
 - Full Transmog-style 3-panel layout with outfit list, character preview, and built-in appearances browser
@@ -34,11 +34,13 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Housing furniture preview with 3D model browser, category filter, search, and paging
 - Ctrl+click any mount, pet, or furniture link to preview it instantly
 
-![Dressing Room](https://media.forgecdn.net/attachments/1599/282/wowscrnshot_032626_003031-jpg.jpg)
+![Dressing Room](https://media.forgecdn.net/attachments/1603/222/wowscrnshot_032826_154335-jpg.jpg)
 
-![Mount Preview](https://media.forgecdn.net/attachments/1599/283/wowscrnshot_032626_003051-jpg.jpg)
+![Mount Preview](https://media.forgecdn.net/attachments/1603/221/wowscrnshot_032826_154352-jpg.jpg)
 
-![Housing Preview](https://media.forgecdn.net/attachments/1599/284/wowscrnshot_032626_003105-jpg.jpg)
+![Pet Preview](https://media.forgecdn.net/attachments/1603/220/wowscrnshot_032826_154405-jpg.jpg)
+
+![Housing Preview](https://media.forgecdn.net/attachments/1603/219/wowscrnshot_032826_154441-jpg.jpg)
 
 ### Inspect Window
 - Same design as the character panel with 3D model and 18 equipment slots
