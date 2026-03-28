@@ -2,10 +2,10 @@ local addonName, ns = ...
 
 local container = ns.currContent
 
-local HEADER_HEIGHT = 26
-local ENTRY_HEIGHT  = 24
+local HEADER_HEIGHT = 28
+local ENTRY_HEIGHT  = 28
 local INDENT_PER_DEPTH = 20
-local ICON_SIZE     = 18
+local ICON_SIZE     = 22
 
 local searchBox = CreateFrame("EditBox", nil, container, "SearchBoxTemplate")
 searchBox:SetSize(220, 20)
@@ -257,6 +257,7 @@ container:SetScript("OnSizeChanged", function(self)
 end)
 
 local entries = {}
+ns.currEntries = entries
 local selectedIndex = nil
 
 local popup = CreateFrame("Frame", nil, container, "BackdropTemplate")
@@ -338,12 +339,16 @@ local function CreateEntry()
     icon:Hide()
     entry.icon = icon
 
-    local name = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local currFontSize = (ns.db and ns.db.global and ns.db.global.currencyFontSize) or 12
+
+    local name = entry:CreateFontString(nil, "OVERLAY")
+    name:SetFont(STANDARD_TEXT_FONT, currFontSize, "")
     name:SetJustifyH("LEFT")
     name:SetWordWrap(false)
     entry.name = name
 
-    local qty = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local qty = entry:CreateFontString(nil, "OVERLAY")
+    qty:SetFont(STANDARD_TEXT_FONT, currFontSize, "")
     qty:SetPoint("RIGHT", -24, 0)
     qty:SetJustifyH("RIGHT")
     entry.qty = qty

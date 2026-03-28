@@ -143,6 +143,124 @@ function ns:ApplySlotOverlayStyle()
     end
 end
 
+function ns:ApplyStatsFontSize()
+    if not ns.db or not ns.db.global then return end
+    local fontSize = ns.db.global.statsFontSize or 12
+    local headerFontSize = ns.db.global.statsHeaderFontSize or 13
+
+    if ns.statFontStrings then
+        for _, pair in ipairs(ns.statFontStrings) do
+            if pair.label then pair.label:SetFont(STANDARD_TEXT_FONT, fontSize, "") end
+            if pair.value then pair.value:SetFont(STANDARD_TEXT_FONT, fontSize, "") end
+        end
+    end
+    if ns.statHeaderFontStrings then
+        for _, fs in ipairs(ns.statHeaderFontStrings) do
+            fs:SetFont(STANDARD_TEXT_FONT, headerFontSize, "")
+        end
+    end
+end
+
+function ns:ApplyRepFontSize()
+    if not ns.db or not ns.db.global then return end
+    local fontSize = ns.db.global.repFontSize or 12
+    local barFontSize = max(fontSize - 2, 8)
+
+    local barFontSize = max(fontSize - 1, 8)
+    if ns.repEntries then
+        for _, entry in ipairs(ns.repEntries) do
+            if entry.name then entry.name:SetFont(STANDARD_TEXT_FONT, fontSize, "OUTLINE") end
+            if entry.barText then entry.barText:SetFont(STANDARD_TEXT_FONT, barFontSize, "OUTLINE") end
+            if entry.standing then entry.standing:SetFont(STANDARD_TEXT_FONT, barFontSize, "OUTLINE") end
+        end
+    end
+end
+
+function ns:ApplyCurrencyFontSize()
+    if not ns.db or not ns.db.global then return end
+    local fontSize = ns.db.global.currencyFontSize or 12
+
+    if ns.currEntries then
+        for _, entry in ipairs(ns.currEntries) do
+            if entry.name then entry.name:SetFont(STANDARD_TEXT_FONT, fontSize, "") end
+            if entry.qty then entry.qty:SetFont(STANDARD_TEXT_FONT, fontSize, "") end
+            if entry.detail then entry.detail:SetFont(STANDARD_TEXT_FONT, max(fontSize - 1, 8), "") end
+        end
+    end
+end
+
+function ns:ApplyIconStyle()
+    if not ns.db or not ns.db.global then return end
+    local rounded = ns.db.global.roundedIcons
+
+    local function Apply(btn)
+        if not btn or not btn.icon then return end
+        local icon = btn.icon
+        if rounded then
+            if not btn._mcuIconMask and btn.CreateMaskTexture then
+                local mask = btn:CreateMaskTexture()
+                mask:SetAllPoints(icon)
+                mask:SetTexture("Interface\\COMMON\\common-iconmask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+                icon:AddMaskTexture(mask)
+                btn._mcuIconMask = mask
+            end
+            icon:SetTexCoord(0, 1, 0, 1)
+            -- Hide square borders, show rounded border overlay
+            if btn.borderTextures then
+                for _, t in ipairs(btn.borderTextures) do t:Hide() end
+            end
+            if btn._mcuRoundedBorder then
+                btn._mcuRoundedBorder:Hide()
+            end
+            if btn.ilvlText then
+                btn.ilvlText:ClearAllPoints()
+                btn.ilvlText:SetPoint("BOTTOMRIGHT", -6, 5)
+            end
+            if btn.upgradeText then
+                btn.upgradeText:ClearAllPoints()
+                btn.upgradeText:SetPoint("TOPRIGHT", -5, -6)
+            end
+            if btn.enchantWarning then
+                btn.enchantWarning:ClearAllPoints()
+                btn.enchantWarning:SetPoint("TOPLEFT", 5, -5)
+            end
+        else
+            if btn._mcuIconMask then
+                icon:RemoveMaskTexture(btn._mcuIconMask)
+                btn._mcuIconMask = nil
+            end
+            icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            -- Restore overlay positions for square mode
+            if btn.ilvlText then
+                btn.ilvlText:ClearAllPoints()
+                btn.ilvlText:SetPoint("BOTTOMRIGHT", -3, 3)
+            end
+            if btn.upgradeText then
+                btn.upgradeText:ClearAllPoints()
+                btn.upgradeText:SetPoint("TOPRIGHT", -2, -4)
+            end
+            if btn.enchantWarning then
+                btn.enchantWarning:ClearAllPoints()
+                btn.enchantWarning:SetPoint("TOPLEFT", 2, -2)
+            end
+            -- Restore square borders, hide rounded border
+            if btn.borderTextures then
+                for _, t in ipairs(btn.borderTextures) do t:Show() end
+            end
+            if btn._mcuRoundedBorder then
+                btn._mcuRoundedBorder:Hide()
+            end
+        end
+    end
+
+    if ns.slotButtons then
+        for _, btn in pairs(ns.slotButtons) do Apply(btn) end
+    end
+    if MCUInspectFrame and MCUInspectFrame.slotButtons then
+        for _, btn in pairs(MCUInspectFrame.slotButtons) do Apply(btn) end
+    end
+end
+
 --- Try the two-return form of GetInventorySlotInfo first; fall back to the
 --- pre-baked file-ID table above.
 function ns:GetEmptySlotTexture(slotID, slotName)
@@ -237,9 +355,9 @@ function ns:CreateFilterDropdown(parent, anchorFrame)
     filterBtn:SetPushedTexture(fbPushed)
 
     local fbIcon = filterBtn:CreateTexture(nil, "OVERLAY")
-    fbIcon:SetSize(14, 14)
+    fbIcon:SetSize(16, 16)
     fbIcon:SetPoint("CENTER")
-    fbIcon:SetAtlas("common-icon-settings")
+    fbIcon:SetTexture("Interface\\Buttons\\UI-OptionsButton")
     filterBtn.icon = fbIcon
 
     local dropdown = CreateFrame("Frame", ddName, UIParent, "BackdropTemplate")

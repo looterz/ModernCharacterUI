@@ -11,8 +11,13 @@ local defaults = {
         blockInCombat = true,
         showEnchantStatus = false,
         showUpgradeTrack = false,
+        roundedIcons = false,
         slotFontSize = 10,
         slotOverlayStyle = "gradient",
+        statsFontSize = 14,
+        statsHeaderFontSize = 16,
+        repFontSize = 16,
+        currencyFontSize = 16,
         characterScale = 100,
         inspectScale = 100,
         dressingRoomScale = 100,
@@ -83,216 +88,156 @@ function MCU:ChatCommand(input)
 end
 
 function MCU:GetOptions()
+    local order = 0
+    local function O() order = order + 1; return order end
+
     return {
         type = "group",
         name = "Modern Character UI",
         args = {
+            -- General
+            generalHeader = { order = O(), type = "header", name = "General" },
             overrideLegacyPanel = {
-                order = 1,
-                type = "toggle",
+                order = O(), type = "toggle", width = "full",
                 name = "Override Legacy Character Panel",
-                desc = "When enabled, pressing 'C' or clicking the Character "
-                    .. "micro-button opens Modern Character UI instead of "
-                    .. "the default character panel.",
-                width = "full",
-                get = function()
-                    return self.db.global.overrideLegacyPanel
-                end,
-                set = function(_, value)
-                    self.db.global.overrideLegacyPanel = value
-                    MCU:Print("Please type /reload for this change to take effect.")
-                end,
+                desc = "Replace the default character panel with Modern Character UI.",
+                get = function() return self.db.global.overrideLegacyPanel end,
+                set = function(_, v) self.db.global.overrideLegacyPanel = v; MCU:Print("Please type /reload for this change to take effect.") end,
             },
             overrideDressingRoom = {
-                order = 2,
-                type = "toggle",
+                order = O(), type = "toggle", width = "full",
                 name = "Override Legacy Dressing Room",
-                desc = "When enabled, Ctrl+clicking items opens the enhanced "
-                    .. "dressing room instead of the default preview.",
-                width = "full",
-                get = function()
-                    return self.db.global.overrideDressingRoom
-                end,
-                set = function(_, value)
-                    self.db.global.overrideDressingRoom = value
-                end,
+                desc = "Replace the default item preview with the enhanced dressing room.",
+                get = function() return self.db.global.overrideDressingRoom end,
+                set = function(_, v) self.db.global.overrideDressingRoom = v end,
             },
             overrideInspect = {
-                order = 3,
-                type = "toggle",
+                order = O(), type = "toggle", width = "full",
                 name = "Override Legacy Inspect Window",
-                desc = "When enabled, right-click Inspect opens the enhanced "
-                    .. "inspect window instead of the default.",
-                width = "full",
-                get = function()
-                    return self.db.global.overrideInspect
-                end,
-                set = function(_, value)
-                    self.db.global.overrideInspect = value
-                end,
+                desc = "Replace the default inspect window with the enhanced version.",
+                get = function() return self.db.global.overrideInspect end,
+                set = function(_, v) self.db.global.overrideInspect = v end,
             },
             blockInCombat = {
-                order = 4,
-                type = "toggle",
+                order = O(), type = "toggle", width = "full",
                 name = "Block Opening in Combat",
-                desc = "Prevents the character panel from opening while you "
-                    .. "are in combat.",
-                width = "full",
-                get = function()
-                    return self.db.global.blockInCombat
-                end,
-                set = function(_, value)
-                    self.db.global.blockInCombat = value
-                end,
+                desc = "Prevents the character panel from opening during combat.",
+                get = function() return self.db.global.blockInCombat end,
+                set = function(_, v) self.db.global.blockInCombat = v end,
             },
-            overlayHeader = {
-                order = 5,
-                type = "header",
-                name = "Slot Overlays",
+
+            -- Character Panel
+            charHeader = { order = O(), type = "header", name = "Character Panel" },
+            statsFontSize = {
+                order = O(), type = "range", width = "full",
+                name = "Stats Font Size", desc = "Font size for stat labels and values.",
+                min = 8, max = 18, step = 1,
+                get = function() return self.db.global.statsFontSize end,
+                set = function(_, v) self.db.global.statsFontSize = v; ns:ApplyStatsFontSize() end,
             },
-            showEnchantStatus = {
-                order = 6,
-                type = "toggle",
-                name = "Show Enchant Status",
-                desc = "Displays a warning indicator on equipment slots "
-                    .. "that are missing an enchant.",
-                width = "full",
-                get = function()
-                    return self.db.global.showEnchantStatus
-                end,
-                set = function(_, value)
-                    self.db.global.showEnchantStatus = value
-                    if ns.RefreshAll then ns:RefreshAll() end
-                end,
-            },
-            showUpgradeTrack = {
-                order = 7,
-                type = "toggle",
-                name = "Show Upgrade Track",
-                desc = "Displays the upgrade progress (e.g. 2/6) on "
-                    .. "equipment slots that support upgrading.",
-                width = "full",
-                get = function()
-                    return self.db.global.showUpgradeTrack
-                end,
-                set = function(_, value)
-                    self.db.global.showUpgradeTrack = value
-                    if ns.RefreshAll then ns:RefreshAll() end
-                end,
-            },
-            slotFontSize = {
-                order = 8,
-                type = "range",
-                name = "Slot Overlay Font Size",
-                desc = "Adjust the font size for item level, upgrade track, "
-                    .. "and other text on equipment slots.",
-                min = 8,
-                max = 16,
-                step = 1,
-                width = "full",
-                get = function()
-                    return self.db.global.slotFontSize
-                end,
-                set = function(_, value)
-                    self.db.global.slotFontSize = value
-                    ns:ApplySlotFontSize()
-                    if ns.RefreshAll then ns:RefreshAll() end
-                end,
-            },
-            slotOverlayStyle = {
-                order = 9,
-                type = "select",
-                name = "Overlay Readability Style",
-                desc = "Choose a background style to improve readability of "
-                    .. "text and icons overlaid on equipment slot icons.",
-                width = "full",
-                values = {
-                    ["none"] = "None",
-                    ["thick_outline"] = "Thick Outline",
-                    ["gradient"] = "Gradient Strips",
-                    ["darken"] = "Darkened Icon",
-                    ["corners"] = "Corner Darkening",
-                    ["shadow"] = "Drop Shadow",
-                },
-                sorting = { "none", "thick_outline", "gradient", "darken", "corners", "shadow" },
-                get = function()
-                    return self.db.global.slotOverlayStyle
-                end,
-                set = function(_, value)
-                    self.db.global.slotOverlayStyle = value
-                    ns:ApplySlotOverlayStyle()
-                    ns:ApplySlotFontSize()
-                    if ns.RefreshAll then ns:RefreshAll() end
-                end,
-            },
-            scaleHeader = {
-                order = 10,
-                type = "header",
-                name = "Window Scale",
+            statsHeaderFontSize = {
+                order = O(), type = "range", width = "full",
+                name = "Stats Header Font Size", desc = "Font size for section headers (Attributes, Enhancements, etc.).",
+                min = 8, max = 20, step = 1,
+                get = function() return self.db.global.statsHeaderFontSize end,
+                set = function(_, v) self.db.global.statsHeaderFontSize = v; ns:ApplyStatsFontSize() end,
             },
             characterScale = {
-                order = 11,
-                type = "range",
-                name = "Character Panel Scale",
-                desc = "Adjust the size of the Character Panel window.",
-                min = 50,
-                max = 200,
-                step = 5,
-                width = "full",
-                get = function()
-                    return self.db.global.characterScale
-                end,
-                set = function(_, value)
-                    self.db.global.characterScale = value
-                    self.db.global.position = nil
-                    if ModernCharacterUIFrame then
-                        ModernCharacterUIFrame:ClearAllPoints()
-                        ModernCharacterUIFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -104)
-                    end
+                order = O(), type = "range", width = "full",
+                name = "Window Scale", desc = "Scale the Character Panel window size.",
+                min = 50, max = 200, step = 5,
+                get = function() return self.db.global.characterScale end,
+                set = function(_, v)
+                    self.db.global.characterScale = v; self.db.global.position = nil
+                    if ModernCharacterUIFrame then ModernCharacterUIFrame:ClearAllPoints(); ModernCharacterUIFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -104) end
                     ns:ApplyFrameScale()
                 end,
             },
-            inspectScale = {
-                order = 12,
-                type = "range",
-                name = "Inspect Window Scale",
-                desc = "Adjust the size of the Inspect window.",
-                min = 50,
-                max = 200,
-                step = 5,
-                width = "full",
-                get = function()
-                    return self.db.global.inspectScale
-                end,
-                set = function(_, value)
-                    self.db.global.inspectScale = value
-                    self.db.global.inspectPosition = nil
-                    if MCUInspectFrame then
-                        MCUInspectFrame:ClearAllPoints()
-                        MCUInspectFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 40, -124)
-                    end
-                    ns:ApplyFrameScale()
-                end,
+
+            -- Reputation Tab
+            repHeader = { order = O(), type = "header", name = "Reputation Tab" },
+            repFontSize = {
+                order = O(), type = "range", width = "full",
+                name = "Font Size", desc = "Font size for faction names, standing, and bar text.",
+                min = 8, max = 18, step = 1,
+                get = function() return self.db.global.repFontSize end,
+                set = function(_, v) self.db.global.repFontSize = v; ns:ApplyRepFontSize(); if ns.UpdateReputation then ns:UpdateReputation() end end,
             },
+
+            -- Currency Tab
+            currHeader = { order = O(), type = "header", name = "Currency Tab" },
+            currencyFontSize = {
+                order = O(), type = "range", width = "full",
+                name = "Font Size", desc = "Font size for currency names and quantities.",
+                min = 8, max = 18, step = 1,
+                get = function() return self.db.global.currencyFontSize end,
+                set = function(_, v) self.db.global.currencyFontSize = v; ns:ApplyCurrencyFontSize(); if ns.UpdateCurrency then ns:UpdateCurrency() end end,
+            },
+
+            -- Equipment Slots
+            slotsHeader = { order = O(), type = "header", name = "Equipment Slots" },
+            showEnchantStatus = {
+                order = O(), type = "toggle", width = "full",
+                name = "Show Enchant Status",
+                desc = "Displays an indicator on enchanted equipment slots.",
+                get = function() return self.db.global.showEnchantStatus end,
+                set = function(_, v) self.db.global.showEnchantStatus = v; if ns.RefreshAll then ns:RefreshAll() end end,
+            },
+            showUpgradeTrack = {
+                order = O(), type = "toggle", width = "full",
+                name = "Show Upgrade Track",
+                desc = "Displays upgrade progress (e.g. 2/6) on equipment slots.",
+                get = function() return self.db.global.showUpgradeTrack end,
+                set = function(_, v) self.db.global.showUpgradeTrack = v; if ns.RefreshAll then ns:RefreshAll() end end,
+            },
+            roundedIcons = {
+                order = O(), type = "toggle", width = "full",
+                name = "Rounded Equipment Icons",
+                desc = "Applies rounded corners to equipment slot icons.",
+                get = function() return self.db.global.roundedIcons end,
+                set = function(_, v) self.db.global.roundedIcons = v; if ns.ApplyIconStyle then ns:ApplyIconStyle() end end,
+            },
+            slotOverlayStyle = {
+                order = O(), type = "select", width = "full",
+                name = "Overlay Readability Style",
+                desc = "Background style to improve readability of slot overlay text.",
+                values = { ["none"] = "None", ["thick_outline"] = "Thick Outline", ["gradient"] = "Gradient Strips", ["darken"] = "Darkened Icon", ["corners"] = "Corner Darkening", ["shadow"] = "Drop Shadow" },
+                sorting = { "none", "thick_outline", "gradient", "darken", "corners", "shadow" },
+                get = function() return self.db.global.slotOverlayStyle end,
+                set = function(_, v) self.db.global.slotOverlayStyle = v; ns:ApplySlotOverlayStyle(); ns:ApplySlotFontSize(); if ns.RefreshAll then ns:RefreshAll() end end,
+            },
+            slotFontSize = {
+                order = O(), type = "range", width = "full",
+                name = "Slot Overlay Font Size", desc = "Font size for item level, upgrade track, and other slot text.",
+                min = 8, max = 16, step = 1,
+                get = function() return self.db.global.slotFontSize end,
+                set = function(_, v) self.db.global.slotFontSize = v; ns:ApplySlotFontSize(); if ns.RefreshAll then ns:RefreshAll() end end,
+            },
+
+            -- Dressing Room
+            drHeader = { order = O(), type = "header", name = "Dressing Room" },
             dressingRoomScale = {
-                order = 13,
-                type = "range",
-                name = "Dressing Room Scale",
-                desc = "Adjust the size of the Dressing Room window.",
-                min = 50,
-                max = 200,
-                step = 5,
-                width = "full",
-                get = function()
-                    return self.db.global.dressingRoomScale
+                order = O(), type = "range", width = "full",
+                name = "Window Scale", desc = "Scale the Dressing Room window size.",
+                min = 50, max = 200, step = 5,
+                get = function() return self.db.global.dressingRoomScale end,
+                set = function(_, v)
+                    self.db.global.dressingRoomScale = v; self.db.global.dressingRoomPosition = nil
+                    if MCUDressingRoomFrame then MCUDressingRoomFrame:ClearAllPoints(); MCUDressingRoomFrame:SetPoint("TOP", UIParent, "TOP", 0, -41) end
+                    ns:ApplyFrameScale()
                 end,
-                set = function(_, value)
-                    self.db.global.dressingRoomScale = value
-                    self.db.global.dressingRoomPosition = nil
-                    if MCUDressingRoomFrame then
-                        MCUDressingRoomFrame:ClearAllPoints()
-                        MCUDressingRoomFrame:SetPoint("TOP", UIParent, "TOP", 0, -41)
-                    end
+            },
+
+            -- Inspect Window
+            inspHeader = { order = O(), type = "header", name = "Inspect Window" },
+            inspectScale = {
+                order = O(), type = "range", width = "full",
+                name = "Window Scale", desc = "Scale the Inspect Window size.",
+                min = 50, max = 200, step = 5,
+                get = function() return self.db.global.inspectScale end,
+                set = function(_, v)
+                    self.db.global.inspectScale = v; self.db.global.inspectPosition = nil
+                    if MCUInspectFrame then MCUInspectFrame:ClearAllPoints(); MCUInspectFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 40, -124) end
                     ns:ApplyFrameScale()
                 end,
             },

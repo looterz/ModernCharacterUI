@@ -15,9 +15,9 @@ local BAR_COLORS = {
 
 local RENOWN_COLOR  = { r = 0.24, g = 0.54, b = 1.0 }
 local HEADER_HEIGHT = 26
-local ENTRY_HEIGHT  = 30
+local ENTRY_HEIGHT  = 28
 local INDENT        = 20
-local BAR_WIDTH     = 200
+local BAR_HEIGHT    = 22
 
 local searchBox = CreateFrame("EditBox", nil, container, "SearchBoxTemplate")
 searchBox:SetSize(220, 20)
@@ -120,16 +120,34 @@ container:SetScript("OnSizeChanged", function(self)
 end)
 
 local entries = {}
+ns.repEntries = entries
 
 local function CreateEntry()
     local entry = CreateFrame("Button", nil, content)
     entry:SetHeight(ENTRY_HEIGHT)
 
-    local arrow = entry:CreateTexture(nil, "ARTWORK")
-    arrow:SetSize(14, 14)
-    arrow:SetPoint("LEFT", 2, 0)
-    arrow:Hide()
-    entry.arrow = arrow
+    local arrowBtn = CreateFrame("Button", nil, entry)
+    arrowBtn:SetSize(20, 20)
+    arrowBtn:SetPoint("LEFT", 0, 0)
+    arrowBtn:SetFrameLevel(entry:GetFrameLevel() + 20)
+    arrowBtn:Hide()
+    local arrowTex = arrowBtn:CreateTexture(nil, "ARTWORK")
+    arrowTex:SetSize(14, 14)
+    arrowTex:SetPoint("CENTER")
+    arrowBtn.tex = arrowTex
+    arrowBtn:SetScript("OnClick", function()
+        local fd = entry.factionData
+        if fd and fd.isHeader then
+            if fd.isCollapsed then
+                C_Reputation.ExpandFactionHeader(fd.factionIndex)
+            else
+                C_Reputation.CollapseFactionHeader(fd.factionIndex)
+            end
+            ns:UpdateReputation()
+        end
+    end)
+    entry.arrow = arrowBtn
+    entry.arrowTex = arrowTex
 
     local star = entry:CreateTexture(nil, "OVERLAY")
     star:SetSize(12, 12)
@@ -137,40 +155,86 @@ local function CreateEntry()
     star:Hide()
     entry.star = star
 
-    local name = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local repFontSize = (ns.db and ns.db.global and ns.db.global.repFontSize) or 12
+    local barFontSize = max(repFontSize - 1, 8)
+
+    -- Full-width progress bar
+    local bar = CreateFrame("StatusBar", nil, entry)
+    bar:SetHeight(BAR_HEIGHT)
+    bar:SetPoint("LEFT", entry, "LEFT", 2, 0)
+    bar:SetPoint("RIGHT", entry, "RIGHT", -2, 0)
+    bar:SetStatusBarTexture("Interface\\RaidFrame\\Raid-Bar-Hp-Fill")
+    bar:GetStatusBarTexture():SetHorizTile(false)
+    bar:SetMinMaxValues(0, 1)
+    bar:SetValue(0)
+    bar:EnableMouse(false)
+    bar:Hide()
+    entry.bar = bar
+    entry.barContainer = bar
+
+    local barBg = bar:CreateTexture(nil, "BACKGROUND")
+    barBg:SetAllPoints()
+    barBg:SetColorTexture(0.08, 0.08, 0.10, 0.85)
+
+    local barBorderTop = bar:CreateTexture(nil, "OVERLAY", nil, -1)
+    barBorderTop:SetHeight(1)
+    barBorderTop:SetPoint("TOPLEFT", -1, 1)
+    barBorderTop:SetPoint("TOPRIGHT", 1, 1)
+    barBorderTop:SetColorTexture(0.3, 0.3, 0.3, 0.6)
+
+    local barBorderBot = bar:CreateTexture(nil, "OVERLAY", nil, -1)
+    barBorderBot:SetHeight(1)
+    barBorderBot:SetPoint("BOTTOMLEFT", -1, -1)
+    barBorderBot:SetPoint("BOTTOMRIGHT", 1, -1)
+    barBorderBot:SetColorTexture(0.3, 0.3, 0.3, 0.6)
+
+    local barBorderLeft = bar:CreateTexture(nil, "OVERLAY", nil, -1)
+    barBorderLeft:SetWidth(1)
+    barBorderLeft:SetPoint("TOPLEFT", -1, 1)
+    barBorderLeft:SetPoint("BOTTOMLEFT", -1, -1)
+    barBorderLeft:SetColorTexture(0.3, 0.3, 0.3, 0.6)
+
+    local barBorderRight = bar:CreateTexture(nil, "OVERLAY", nil, -1)
+    barBorderRight:SetWidth(1)
+    barBorderRight:SetPoint("TOPRIGHT", 1, 1)
+    barBorderRight:SetPoint("BOTTOMRIGHT", 1, -1)
+    barBorderRight:SetColorTexture(0.3, 0.3, 0.3, 0.6)
+
+    -- Text frame above the fill
+    local textFrame = CreateFrame("Frame", nil, bar)
+    textFrame:SetAllPoints()
+    textFrame:SetFrameLevel(bar:GetFrameLevel() + 10)
+    textFrame:EnableMouse(false)
+    entry.barTextFrame = textFrame
+
+    -- Left: Faction name
+    local name = textFrame:CreateFontString(nil, "OVERLAY")
+    name:SetFont(STANDARD_TEXT_FONT, repFontSize, "OUTLINE")
+    name:SetPoint("LEFT", 8, 0)
+    name:SetPoint("RIGHT", textFrame, "CENTER", -10, 0)
     name:SetJustifyH("LEFT")
     name:SetWordWrap(false)
     entry.name = name
 
-    local bar = CreateFrame("StatusBar", nil, entry)
-    bar:SetHeight(14)
-    bar:SetWidth(BAR_WIDTH)
-    bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-    bar:GetStatusBarTexture():SetHorizTile(false)
-    bar:SetMinMaxValues(0, 1)
-    bar:SetValue(0)
-    bar:Hide()
-    entry.bar = bar
-
-    local barBg = bar:CreateTexture(nil, "BACKGROUND")
-    barBg:SetAllPoints()
-    barBg:SetColorTexture(0.08, 0.08, 0.10, 0.9)
-
-    local barText = bar:CreateFontString(nil, "OVERLAY")
-    barText:SetFont(STANDARD_TEXT_FONT, 9, "OUTLINE")
-    barText:SetPoint("CENTER")
+    -- Center: Progress numbers
+    local barText = textFrame:CreateFontString(nil, "OVERLAY")
+    barText:SetFont(STANDARD_TEXT_FONT, barFontSize, "OUTLINE")
+    barText:SetPoint("CENTER", 0, 0)
+    barText:SetJustifyH("CENTER")
     barText:SetTextColor(0.9, 0.9, 0.9, 1)
     entry.barText = barText
 
-    local standing = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    standing:SetPoint("LEFT", bar, "RIGHT", 8, 0)
-    standing:SetJustifyH("LEFT")
-    standing:SetWidth(100)
+    -- Right: Standing text
+    local standing = textFrame:CreateFontString(nil, "OVERLAY")
+    standing:SetFont(STANDARD_TEXT_FONT, barFontSize, "OUTLINE")
+    standing:SetPoint("RIGHT", -8, 0)
+    standing:SetJustifyH("RIGHT")
+    standing:SetTextColor(1, 1, 1, 0.9)
     entry.standing = standing
 
     local paragonGlow = entry:CreateTexture(nil, "OVERLAY")
     paragonGlow:SetSize(16, 16)
-    paragonGlow:SetPoint("RIGHT", bar, "LEFT", -4, 0)
+    paragonGlow:SetPoint("LEFT", bar, "LEFT", -18, 0)
     paragonGlow:SetAtlas("ParagonReputation_Bag")
     paragonGlow:Hide()
     entry.paragonGlow = paragonGlow
@@ -219,11 +283,13 @@ local function CreateEntry()
         if not fd then return end
 
         if fd.isHeader and not fd.isHeaderWithRep then
+            -- Pure headers: toggle collapse (arrow button also handles this)
             if fd.isCollapsed then
                 C_Reputation.ExpandFactionHeader(fd.factionIndex)
             else
                 C_Reputation.CollapseFactionHeader(fd.factionIndex)
             end
+            ns:UpdateReputation()
         else
             PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
             C_Reputation.SetSelectedFaction(fd.factionIndex)
@@ -322,30 +388,38 @@ function ns:UpdateReputation()
 
         if fd.isHeader then
             entry.arrow:Show()
-            entry.arrow:SetAtlas(fd.isCollapsed
+            entry.arrowTex:SetAtlas(fd.isCollapsed
                 and "campaign_headericon_closed"
                 or  "campaign_headericon_open")
         else
             entry.arrow:Hide()
         end
 
-        local nameAnchor = fd.isHeader and entry.arrow or entry
-        entry.name:ClearAllPoints()
+        entry.bar:ClearAllPoints()
+        entry.bar:SetHeight(BAR_HEIGHT)
         if fd.isHeader then
+            entry.bar:SetPoint("LEFT", entry.arrow, "RIGHT", 4, 0)
+        else
+            entry.bar:SetPoint("LEFT", entry, "LEFT", 2, 0)
+        end
+        entry.bar:SetPoint("RIGHT", entry, "RIGHT", -2, 0)
+
+        entry.name:ClearAllPoints()
+        if fd.isHeader and not fd.isHeaderWithRep then
+            entry.name:SetParent(entry)
             entry.name:SetPoint("LEFT", entry.arrow, "RIGHT", 4, 0)
             entry.name:SetPoint("RIGHT", entry, "RIGHT", -4, 0)
         else
-            entry.name:SetPoint("LEFT", 20, 0)
-            entry.name:SetPoint("RIGHT", entry.bar, "LEFT", -8, 0)
+            -- Inside the bar's text frame so it renders above the fill
+            entry.name:SetParent(entry.barTextFrame)
+            entry.name:SetPoint("LEFT", entry.barContainer, "LEFT", 8, 0)
+            entry.name:SetPoint("RIGHT", entry.barContainer, "CENTER", -10, 0)
         end
         entry.name:SetText(fd.name or "")
 
         entry.star:SetShown(fd.isWatched and not isPureHeader)
         if fd.isWatched and not isPureHeader then
-            entry.star:SetPoint("LEFT", 4, 0)
-            entry.name:ClearAllPoints()
-            entry.name:SetPoint("LEFT", entry.star, "RIGHT", 2, 0)
-            entry.name:SetPoint("RIGHT", entry.bar, "LEFT", -8, 0)
+            entry.star:SetPoint("LEFT", entry.bar, "LEFT", -16, 0)
         end
 
         if isPureHeader then
@@ -358,9 +432,7 @@ function ns:UpdateReputation()
         else
             visibleIdx = visibleIdx + 1
             entry.stripe:SetShown(visibleIdx % 2 == 0)
-            entry.name:SetTextColor(HIGHLIGHT_FONT_COLOR.r,
-                                     HIGHLIGHT_FONT_COLOR.g,
-                                     HIGHLIGHT_FONT_COLOR.b)
+            entry.name:SetTextColor(1, 1, 1, 1)
 
             local minVal, maxVal, curVal = 0, 1, 0
             local standingText = ""
@@ -417,12 +489,6 @@ function ns:UpdateReputation()
                 barColor = BAR_COLORS[fd.reaction or 4] or BAR_COLORS[4]
             end
 
-            entry.standing:ClearAllPoints()
-            entry.standing:SetPoint("RIGHT", entry, "RIGHT", -4, 0)
-
-            entry.bar:ClearAllPoints()
-            entry.bar:SetPoint("RIGHT", entry, "RIGHT", -114, 0)
-
             local range = maxVal - minVal
             local fill  = (range > 0) and ((curVal - minVal) / range)
                           or (isCapped and 1 or 0)
@@ -434,25 +500,40 @@ function ns:UpdateReputation()
 
             if isCapped then
                 entry.barText:SetText("")
+                entry.standing:SetText(standingText)
             else
                 local cur   = curVal - minVal
                 local total = maxVal - minVal
                 entry.barText:SetText(
                     BreakUpLargeNumbers(cur) .. " / " ..
                     BreakUpLargeNumbers(total))
+                entry.standing:SetText(standingText)
             end
+            entry.standing:SetTextColor(1, 1, 1, 0.9)
 
-            entry.standing:SetText(standingText)
-            entry.standing:SetTextColor(barColor.r, barColor.g, barColor.b)
-
+            -- Paragon: override the capped bar with paragon progress
             local showParagon = false
-            if C_Reputation.IsFactionParagon and
-               C_Reputation.IsFactionParagon(fd.factionID) then
-                local val, threshold, _, hasReward =
+            -- Only show paragon progress for factions at Exalted standing
+            if fd.reaction == (MAX_REPUTATION_REACTION or 8)
+               and C_Reputation.IsFactionParagon
+               and C_Reputation.IsFactionParagon(fd.factionID) then
+                local parVal, parThreshold, _, hasReward =
                     C_Reputation.GetFactionParagonInfo(fd.factionID)
-                if hasReward then
-                    showParagon = true
-                    entry.hasParagonReward = true
+                if parVal and parThreshold and parThreshold > 0 then
+                    entry.bar:SetStatusBarColor(0.26, 0.42, 0.88, 0.85)
+                    entry.bar:SetValue((parVal % parThreshold) / parThreshold)
+                    entry.bar:Show()
+                    entry.barText:SetText(
+                        BreakUpLargeNumbers(parVal % parThreshold) .. " / " ..
+                        BreakUpLargeNumbers(parThreshold))
+                    if hasReward then
+                        showParagon = true
+                        entry.hasParagonReward = true
+                        entry.standing:SetText("|cff00ff00Reward!|r")
+                    else
+                        entry.standing:SetText("Paragon")
+                        entry.standing:SetTextColor(0.26, 0.42, 0.88)
+                    end
                 end
             end
             entry.paragonGlow:SetShown(showParagon)

@@ -806,7 +806,7 @@ local function UpdateSlot(btn, unit)
     end
     if btn.overlays then
         local style = (ns.db and ns.db.global and ns.db.global.slotOverlayStyle) or "none"
-        if btn.overlays.gradTL then btn.overlays.gradTL:SetShown(style == "gradient" and isEnchanted) end
+        if btn.overlays.gradTL then btn.overlays.gradTL:Hide() end
         btn.overlays.cornerTL:SetShown(style == "corners" and isEnchanted)
     end
 

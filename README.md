@@ -78,6 +78,11 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - **Show Upgrade Track**: Off — displays upgrade progress (e.g. 2/6) on equipment slots
 - **Slot Overlay Font Size**: 8-16 (default 10) — adjusts font size for item level, upgrade track, and other slot text
 - **Overlay Readability Style**: Gradient Strips (default) — choose a background style for slot overlays: None, Thick Outline, Gradient Strips, Darkened Icon, Corner Darkening, or Drop Shadow
+- **Rounded Equipment Icons**: Off — applies rounded corners to equipment slot icons
+- **Stats Panel Font Size**: 8-18 (default 12) — adjusts font size for stat labels and values
+- **Stats Header Font Size**: 8-20 (default 13) — adjusts font size for section headers
+- **Reputation Panel Font Size**: 8-18 (default 12) — adjusts font size for faction names and standing text
+- **Currency Panel Font Size**: 8-18 (default 12) — adjusts font size for currency names and quantities
 - **Character Panel Scale**: 50-200% (default 100%)
 - **Inspect Window Scale**: 50-200% (default 100%)
 - **Dressing Room Scale**: 50-200% (default 100%)

@@ -103,6 +103,10 @@ local flyoutSettings = {
     anchorY = -3,
     verticalAnchorX = 0,
     verticalAnchorY = 0,
+    highlightSizeX = ns.SLOT_SIZE + 16,
+    highlightSizeY = ns.SLOT_SIZE + 16,
+    highlightOfsX = -10,
+    highlightOfsY = 0,
 }
 leftColumn.flyoutSettings = flyoutSettings
 rightColumn.flyoutSettings = flyoutSettings
@@ -295,6 +299,10 @@ frame:SetScript("OnEvent", function(self, event, arg1, ...)
         ns:ApplyFrameScale()
         ns:ApplySlotFontSize()
         ns:ApplySlotOverlayStyle()
+        ns:ApplyStatsFontSize()
+        ns:ApplyRepFontSize()
+        ns:ApplyCurrencyFontSize()
+        ns:ApplyIconStyle()
         return
     end
 
