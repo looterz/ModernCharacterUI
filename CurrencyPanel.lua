@@ -612,15 +612,20 @@ function ns:UpdateCurrency()
             entry.arrow:Hide()
             local currFontSize = (ns.db and ns.db.global and ns.db.global.currencyFontSize) or 16
 
+            -- Fetch detailed currency info for accurate weekly/season tracking
+            local link = C_CurrencyInfo.GetCurrencyListLink(i)
+            local currencyID = link and tonumber(link:match("currency:(%d+)"))
+            local detailed = currencyID and C_CurrencyInfo.GetCurrencyInfo(currencyID)
+
             -- Determine if this currency has a cap
             local capCurrent, capMax, capLabel = 0, 0, nil
-            if (info.maxWeeklyQuantity or 0) > 0 then
-                capCurrent = info.quantityEarnedThisWeek or 0
-                capMax = info.maxWeeklyQuantity
+            if detailed and (detailed.maxWeeklyQuantity or 0) > 0 then
+                capCurrent = detailed.quantityEarnedThisWeek or 0
+                capMax = detailed.maxWeeklyQuantity
                 capLabel = "Weekly"
-            elseif info.useTotalEarnedForMaxQty and (info.maxQuantity or 0) > 0 then
-                capCurrent = info.totalEarned or 0
-                capMax = info.maxQuantity
+            elseif detailed and detailed.useTotalEarnedForMaxQty and (detailed.maxQuantity or 0) > 0 then
+                capCurrent = detailed.totalEarned or 0
+                capMax = detailed.maxQuantity
                 capLabel = "Season"
             elseif (info.maxQuantity or 0) > 0 then
                 capCurrent = info.quantity or 0
