@@ -9,16 +9,16 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Equipment Manager tab to save, load, rename, and delete gear sets
 - PvP Item Levels show for items and your character while in PvP content
 - Reputation tab with search, filters, color-coded standing bars, and detail panel
-- Currency tab with search, filters, backpack tracking (Shift+click), and transfer log
+- Currency tab with search, filters, backpack tracking (Shift+click), quick access to Warband currency transfer, and transfer log
 - Movement Speed tracking based on stats and the current movement mode
 
-![Character Panel](https://media.forgecdn.net/attachments/1599/278/wowscrnshot_032526_212636-jpg.jpg)
+![Character Panel](https://media.forgecdn.net/attachments/1603/225/wowscrnshot_032826_154237-jpg.jpg)
 
-![Character Panel PvP Mode](https://media.forgecdn.net/attachments/1599/276/wowscrnshot_032626_003633-jpg.jpg)
+![Character Panel PvP Mode](https://media.forgecdn.net/attachments/1603/230/wowscrnshot_032826_160100-jpg.jpg)
 
-![Reputation Tab](https://media.forgecdn.net/attachments/1599/279/wowscrnshot_032526_212642-jpg.jpg)
+![Reputation Tab](https://media.forgecdn.net/attachments/1603/224/wowscrnshot_032826_154243-jpg.jpg)
 
-![Currency Tab](https://media.forgecdn.net/attachments/1599/280/wowscrnshot_032526_212646-jpg.jpg)
+![Currency Tab](https://media.forgecdn.net/attachments/1603/223/wowscrnshot_032826_154250-jpg.jpg)
 
 ### Dressing Room
 - Full Transmog-style 3-panel layout with outfit list, character preview, and built-in appearances browser
@@ -28,16 +28,20 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Click equipment slots to browse appearances, right-click to undress
 - Save and load custom outfit sets
 - Click any item slot being previewed to view it in your collection instantly
-- Mount preview mode with 3D model browser, search, and paging across all mounts in the game
-- Ctrl+click any mount link or click the Mounts button to browse and preview mounts
-- Housing furniture preview mode with 3D model browser, category filter, search, and paging
-- Ctrl+click any furniture item link or click the Furniture button to browse and preview housing decorations
+- Tab-based navigation: Character, Mounts, Pets, and Furniture modes
+- Mount preview with 3D model browser, search, and paging across all mounts
+- Battle pet preview with 3D model browser, search, and paging across all pets
+- Housing furniture preview with 3D model browser, category filter, search, and paging
+- Ctrl+click any mount, pet, or furniture link to preview it instantly
+- Shift+click any transmog set to link it in chat
 
-![Dressing Room](https://media.forgecdn.net/attachments/1599/282/wowscrnshot_032626_003031-jpg.jpg)
+![Dressing Room](https://media.forgecdn.net/attachments/1603/222/wowscrnshot_032826_154335-jpg.jpg)
 
-![Mount Preview](https://media.forgecdn.net/attachments/1599/283/wowscrnshot_032626_003051-jpg.jpg)
+![Mount Preview](https://media.forgecdn.net/attachments/1603/221/wowscrnshot_032826_154352-jpg.jpg)
 
-![Housing Preview](https://media.forgecdn.net/attachments/1599/284/wowscrnshot_032626_003105-jpg.jpg)
+![Pet Preview](https://media.forgecdn.net/attachments/1603/220/wowscrnshot_032826_154405-jpg.jpg)
+
+![Housing Preview](https://media.forgecdn.net/attachments/1603/219/wowscrnshot_032826_154441-jpg.jpg)
 
 ### Inspect Window
 - Same design as the character panel with 3D model and 18 equipment slots
@@ -78,6 +82,13 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - **Show Upgrade Track**: Off — displays upgrade progress (e.g. 2/6) on equipment slots
 - **Slot Overlay Font Size**: 8-16 (default 10) — adjusts font size for item level, upgrade track, and other slot text
 - **Overlay Readability Style**: Gradient Strips (default) — choose a background style for slot overlays: None, Thick Outline, Gradient Strips, Darkened Icon, Corner Darkening, or Drop Shadow
+- **Rounded Equipment Icons**: Off — applies rounded corners to equipment slot icons
+- **Stats Panel Font Size**: 8-18 (default 12) — adjusts font size for stat labels and values
+- **Stats Header Font Size**: 8-20 (default 13) — adjusts font size for section headers
+- **Reputation Panel Font Size**: 8-18 (default 16) — adjusts font size for faction names and standing text
+- **Reputation Category Font Size**: 8-24 (default 20) — adjusts font size for reputation category headers
+- **Currency Panel Font Size**: 8-18 (default 16) — adjusts font size for currency names and quantities
+- **Currency Category Font Size**: 8-24 (default 20) — adjusts font size for currency category headers
 - **Character Panel Scale**: 50-200% (default 100%)
 - **Inspect Window Scale**: 50-200% (default 100%)
 - **Dressing Room Scale**: 50-200% (default 100%)
@@ -88,6 +99,7 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - **`/mcu character`**: Toggle character panel
 - **`/mcu dress`**: Toggle dressing room
 - **`/mcu mounts`**: Open mount preview
+- **`/mcu pets`**: Open pet preview
 - **`/mcu furniture`**: Open furniture preview
 
 ## Feedback and Support

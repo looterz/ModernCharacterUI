@@ -2,10 +2,28 @@ local addonName, ns = ...
 
 local container = ns.currContent
 
-local HEADER_HEIGHT = 26
-local ENTRY_HEIGHT  = 24
+local HEADER_HEIGHT = 28
+local ENTRY_HEIGHT  = 28
 local INDENT_PER_DEPTH = 20
-local ICON_SIZE     = 18
+local ICON_SIZE     = 22
+local BAR_HEIGHT    = 22
+
+local CURRENCY_BAR_COLORS = {
+    { threshold = 0.00, r = 0.24, g = 0.54, b = 1.00 },  -- Blue
+    { threshold = 0.25, r = 0.13, g = 0.80, b = 0.13 },  -- Green
+    { threshold = 0.50, r = 0.93, g = 0.80, b = 0.13 },  -- Yellow
+    { threshold = 0.75, r = 0.80, g = 0.13, b = 0.13 },  -- Dark Red
+}
+
+local function GetCurrencyBarColor(pct)
+    pct = max(0, min(1, pct))
+    for i = #CURRENCY_BAR_COLORS, 1, -1 do
+        if pct >= CURRENCY_BAR_COLORS[i].threshold then
+            return CURRENCY_BAR_COLORS[i]
+        end
+    end
+    return CURRENCY_BAR_COLORS[1]
+end
 
 local searchBox = CreateFrame("EditBox", nil, container, "SearchBoxTemplate")
 searchBox:SetSize(220, 20)
@@ -215,21 +233,6 @@ local function RefreshTransferLog()
     logContent:SetHeight(max(y, 1))
 end
 
-currFilterOpts.addDivider()
-currFilterOpts.addAction(
-    CURRENCY_TRANSFER_LOG or "Currency Transfer Log",
-    function()
-        if transferLog:IsShown() then
-            transferLog:Hide()
-        else
-            if C_CurrencyInfo.RequestCurrencyDataForAccountCharacters then
-                C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
-            end
-            RefreshTransferLog()
-            transferLog:Show()
-        end
-    end)
-
 local function FuzzyMatch(subject, query)
     if query == "" then return true end
     local si = 1
@@ -257,6 +260,7 @@ container:SetScript("OnSizeChanged", function(self)
 end)
 
 local entries = {}
+ns.currEntries = entries
 local selectedIndex = nil
 
 local popup = CreateFrame("Frame", nil, container, "BackdropTemplate")
@@ -323,6 +327,210 @@ unusedCheck:SetScript("OnClick", function(self)
     ns:UpdateCurrency()
 end)
 
+-- Blizzard's mixin drives the button's visibility and enabled state (it
+-- requests warband currency data and tracks transfer eligibility), but the
+-- click is ours: C_CurrencyInfo.RequestCurrencyFromAccountCharacter is
+-- protected, and the transfer menu's Confirm is blocked whenever any addon
+-- code populated the menu. The only working path is Blizzard's own token
+-- frame, so the button hands the player over to it.
+--
+-- To keep that hand-off short we collapse every currency category except the
+-- target's and force the transferable filter before opening the native frame
+-- (both are C-side state, so they carry no taint), then float a highlight
+-- over the target row once the secure event handler has rebuilt the list.
+local transferButton
+if CurrencyTransferToggleButtonMixin then
+    transferButton = CreateFrame("Button", nil, popup,
+                                 "CurrencyTransferToggleButtonTemplate")
+    transferButton:SetPoint("TOPLEFT", unusedCheck, "BOTTOMLEFT", 4, -10)
+
+    local savedCurrencyFilter
+    local savedHeaderState
+
+    local function FocusCurrencyInList(targetIndex)
+        local targetHeader
+        for i = targetIndex, 1, -1 do
+            local info = C_CurrencyInfo.GetCurrencyListInfo(i)
+            if info and info.isHeader and (info.currencyListDepth or 0) == 0 then
+                targetHeader = info.name
+                break
+            end
+        end
+
+        -- Merge into any pending snapshot so repeated transfers don't bake
+        -- the collapsed state in as the state to restore.
+        local state = savedHeaderState or {}
+        savedHeaderState = state
+
+        for i = C_CurrencyInfo.GetCurrencyListSize(), 1, -1 do
+            local info = C_CurrencyInfo.GetCurrencyListInfo(i)
+            if info and info.isHeader and (info.currencyListDepth or 0) == 0 then
+                if state[info.name] == nil then
+                    state[info.name] = info.isHeaderExpanded and true or false
+                end
+                if info.name == targetHeader then
+                    if not info.isHeaderExpanded then
+                        C_CurrencyInfo.ExpandCurrencyList(i, true)
+                    end
+                elseif info.isHeaderExpanded then
+                    C_CurrencyInfo.ExpandCurrencyList(i, false)
+                end
+            end
+        end
+
+        -- The character-only filter never triggers the secure event-driven
+        -- list rebuild, which transfers depend on; switch to the
+        -- transferable filter while the native frame is in use.
+        if C_CurrencyInfo.GetCurrencyFilter and Enum.CurrencyFilterType then
+            local transferable = Enum.CurrencyFilterType.DiscoveredAndAllAccountTransferable
+            local current = C_CurrencyInfo.GetCurrencyFilter()
+            if current ~= transferable then
+                savedCurrencyFilter = current
+                C_CurrencyInfo.SetCurrencyFilter(transferable)
+            end
+        end
+    end
+
+    local function RestoreCurrencyListState()
+        if savedCurrencyFilter then
+            C_CurrencyInfo.SetCurrencyFilter(savedCurrencyFilter)
+            savedCurrencyFilter = nil
+        end
+        if savedHeaderState then
+            local state = savedHeaderState
+            savedHeaderState = nil
+            for i = C_CurrencyInfo.GetCurrencyListSize(), 1, -1 do
+                local info = C_CurrencyInfo.GetCurrencyListInfo(i)
+                if info and info.isHeader and (info.currencyListDepth or 0) == 0 then
+                    local expanded = state[info.name]
+                    if expanded ~= nil and expanded ~= info.isHeaderExpanded then
+                        C_CurrencyInfo.ExpandCurrencyList(i, expanded)
+                    end
+                end
+            end
+        end
+        ns:UpdateCurrency()
+    end
+
+    if TokenFrame then
+        TokenFrame:HookScript("OnHide", RestoreCurrencyListState)
+    end
+
+    local transferHint
+
+    local function ShowTransferHint(row, currencyID)
+        if not transferHint then
+            transferHint = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+            transferHint:SetFrameStrata("DIALOG")
+            transferHint:SetBackdrop({
+                edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+                edgeSize = 12,
+            })
+            transferHint:SetBackdropBorderColor(1, 0.82, 0, 1)
+
+            local label = transferHint:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            label:SetPoint("LEFT", transferHint, "RIGHT", 8, 0)
+            label:SetText("Transfer this currency")
+
+            -- The native list recycles row frames on scroll, so drop the
+            -- highlight as soon as the anchored row shows something else.
+            transferHint:SetScript("OnUpdate", function(self, elapsed)
+                self.elapsed = (self.elapsed or 0) + elapsed
+                local rowValid = self.row and self.row:IsVisible()
+                    and self.row.elementData
+                    and self.row.elementData.currencyID == self.currencyID
+                if not rowValid or self.elapsed > 20
+                   or (TokenFramePopup and TokenFramePopup:IsShown()) then
+                    self:Hide()
+                end
+            end)
+            transferHint:SetScript("OnHide", function(self)
+                self.row = nil
+            end)
+        end
+
+        transferHint.row = row
+        transferHint.currencyID = currencyID
+        transferHint.elapsed = 0
+        transferHint:ClearAllPoints()
+        transferHint:SetPoint("TOPLEFT", row, "TOPLEFT", -2, 2)
+        transferHint:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 2, -2)
+        transferHint:Show()
+    end
+
+    local hintWatcher = CreateFrame("Frame")
+    hintWatcher:SetScript("OnEvent", function(self)
+        self:UnregisterEvent("ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED")
+        local currencyID = self.pendingCurrencyID
+        self.pendingCurrencyID = nil
+        if not currencyID then return end
+        -- Anchor only after the token frame's own secure handler has rebuilt
+        -- its list for this same event.
+        C_Timer.After(0, function()
+            if not (TokenFrame and TokenFrame:IsVisible() and TokenFrame.ScrollBox) then
+                return
+            end
+            local row = TokenFrame.ScrollBox:FindFrameByPredicate(function(button, elementData)
+                return not elementData.isHeader and elementData.currencyID == currencyID
+            end)
+            if row then
+                ShowTransferHint(row, currencyID)
+            end
+        end)
+    end)
+
+    transferButton:SetScript("OnClick", function(self)
+        if not self.currencyID then return end
+        if popup.currencyIndex then
+            FocusCurrencyInList(popup.currencyIndex)
+        end
+        ns.frame:Hide()
+        -- The native token list built during this (tainted) call is unusable
+        -- for transfers; requesting account data makes the secure
+        -- ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED handler rebuild it clean.
+        if C_CurrencyInfo.RequestCurrencyDataForAccountCharacters then
+            C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
+        end
+        hintWatcher.pendingCurrencyID = self.currencyID
+        hintWatcher:RegisterEvent("ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED")
+        if not (TokenFrame and TokenFrame:IsVisible()) then
+            local toggleCharacter = ns.nativeToggleCharacter or ToggleCharacter
+            toggleCharacter("TokenFrame")
+        end
+    end)
+
+    transferButton:HookScript("OnEnter", function(self)
+        if self:IsEnabled() then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip_AddNormalLine(GameTooltip,
+                "Blizzard restricts currency transfers to the default UI. This opens the Blizzard currency panel with this currency highlighted.",
+                true)
+            GameTooltip:Show()
+        end
+    end)
+    transferButton:HookScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+end
+
+currFilterOpts.addDivider()
+currFilterOpts.addAction(
+    CURRENCY_TRANSFER_LOG or "Currency Transfer Log",
+    function()
+        if transferLog:IsShown() then
+            transferLog:Hide()
+        else
+            selectedIndex = nil
+            popup:Hide()
+            if C_CurrencyInfo.RequestCurrencyDataForAccountCharacters then
+                C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
+            end
+            RefreshTransferLog()
+            transferLog:Show()
+            ns:UpdateCurrency()
+        end
+    end)
+
 local function CreateEntry()
     local entry = CreateFrame("Button", nil, content)
     entry:SetHeight(ENTRY_HEIGHT)
@@ -338,12 +546,16 @@ local function CreateEntry()
     icon:Hide()
     entry.icon = icon
 
-    local name = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local currFontSize = (ns.db and ns.db.global and ns.db.global.currencyFontSize) or 12
+
+    local name = entry:CreateFontString(nil, "OVERLAY")
+    name:SetFont(STANDARD_TEXT_FONT, currFontSize, "")
     name:SetJustifyH("LEFT")
     name:SetWordWrap(false)
     entry.name = name
 
-    local qty = entry:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local qty = entry:CreateFontString(nil, "OVERLAY")
+    qty:SetFont(STANDARD_TEXT_FONT, currFontSize, "")
     qty:SetPoint("RIGHT", -24, 0)
     qty:SetJustifyH("RIGHT")
     entry.qty = qty
@@ -370,6 +582,80 @@ local function CreateEntry()
     local hl = entry:CreateTexture(nil, "HIGHLIGHT")
     hl:SetAllPoints()
     hl:SetColorTexture(1, 1, 1, 0.05)
+
+    -- Progress bar for capped currencies
+    local bar = CreateFrame("StatusBar", nil, entry)
+    bar:SetHeight(BAR_HEIGHT)
+    bar:SetPoint("LEFT", entry, "LEFT", 2, 0)
+    bar:SetPoint("RIGHT", entry, "RIGHT", -2, 0)
+    bar:SetStatusBarTexture("Interface\\RaidFrame\\Raid-Bar-Hp-Fill")
+    bar:GetStatusBarTexture():SetHorizTile(false)
+    bar:SetMinMaxValues(0, 1)
+    bar:SetValue(0)
+    bar:EnableMouse(false)
+    bar:Hide()
+
+    local barBg = bar:CreateTexture(nil, "BACKGROUND")
+    barBg:SetAllPoints()
+    barBg:SetColorTexture(0.08, 0.08, 0.10, 0.85)
+
+    local barBorderTop = bar:CreateTexture(nil, "OVERLAY", nil, -1)
+    barBorderTop:SetHeight(1)
+    barBorderTop:SetPoint("TOPLEFT", -1, 1)
+    barBorderTop:SetPoint("TOPRIGHT", 1, 1)
+    barBorderTop:SetColorTexture(0.3, 0.3, 0.3, 0.6)
+
+    local barBorderBot = bar:CreateTexture(nil, "OVERLAY", nil, -1)
+    barBorderBot:SetHeight(1)
+    barBorderBot:SetPoint("BOTTOMLEFT", -1, -1)
+    barBorderBot:SetPoint("BOTTOMRIGHT", 1, -1)
+    barBorderBot:SetColorTexture(0.3, 0.3, 0.3, 0.6)
+
+    local barBorderLeft = bar:CreateTexture(nil, "OVERLAY", nil, -1)
+    barBorderLeft:SetWidth(1)
+    barBorderLeft:SetPoint("TOPLEFT", -1, 1)
+    barBorderLeft:SetPoint("BOTTOMLEFT", -1, -1)
+    barBorderLeft:SetColorTexture(0.3, 0.3, 0.3, 0.6)
+
+    local barBorderRight = bar:CreateTexture(nil, "OVERLAY", nil, -1)
+    barBorderRight:SetWidth(1)
+    barBorderRight:SetPoint("TOPRIGHT", 1, 1)
+    barBorderRight:SetPoint("BOTTOMRIGHT", 1, -1)
+    barBorderRight:SetColorTexture(0.3, 0.3, 0.3, 0.6)
+
+    local barTextFrame = CreateFrame("Frame", nil, bar)
+    barTextFrame:SetAllPoints()
+    barTextFrame:SetFrameLevel(bar:GetFrameLevel() + 10)
+    barTextFrame:EnableMouse(false)
+
+    local barIcon = barTextFrame:CreateTexture(nil, "OVERLAY")
+    barIcon:SetSize(18, 18)
+    barIcon:SetPoint("LEFT", 6, 0)
+
+    local barName = barTextFrame:CreateFontString(nil, "OVERLAY")
+    barName:SetFont(STANDARD_TEXT_FONT, currFontSize, "OUTLINE")
+    barName:SetPoint("LEFT", barIcon, "RIGHT", 4, 0)
+    barName:SetPoint("RIGHT", barTextFrame, "CENTER", -10, 0)
+    barName:SetJustifyH("LEFT")
+    barName:SetWordWrap(false)
+
+    local barProgress = barTextFrame:CreateFontString(nil, "OVERLAY")
+    barProgress:SetFont(STANDARD_TEXT_FONT, max(8, currFontSize - 1), "OUTLINE")
+    barProgress:SetPoint("CENTER", 0, 0)
+    barProgress:SetJustifyH("CENTER")
+    barProgress:SetTextColor(0.9, 0.9, 0.9, 1)
+
+    local barLabel = barTextFrame:CreateFontString(nil, "OVERLAY")
+    barLabel:SetFont(STANDARD_TEXT_FONT, max(8, currFontSize - 1), "OUTLINE")
+    barLabel:SetPoint("RIGHT", -8, 0)
+    barLabel:SetJustifyH("RIGHT")
+    barLabel:SetTextColor(1, 1, 1, 0.9)
+
+    entry.bar = bar
+    entry.barIcon = barIcon
+    entry.barName = barName
+    entry.barProgress = barProgress
+    entry.barLabel = barLabel
 
     entry:SetScript("OnEnter", function(self)
         if self.currencyIndex and not self.isHeader then
@@ -419,6 +705,10 @@ local function CreateEntry()
                 backpackCheck:SetChecked(info.isShowInBackpack)
                 unusedCheck:SetChecked(info.isTypeUnused)
                 popup.currencyIndex = self.currencyIndex
+                if transferButton then
+                    transferButton:Refresh(info)
+                end
+                transferLog:Hide()
                 popup:Show()
             end
         end
@@ -495,9 +785,12 @@ function ns:UpdateCurrency()
                 and "campaign_headericon_open"
                 or  "campaign_headericon_closed")
 
+            entry.name:Show()
             entry.name:ClearAllPoints()
             entry.name:SetPoint("LEFT", entry.arrow, "RIGHT", 4, 0)
             entry.name:SetPoint("RIGHT", entry, "RIGHT", -4, 0)
+            local headerFontSize = (ns.db and ns.db.global and ns.db.global.currencyHeaderFontSize) or 20
+            entry.name:SetFont(STANDARD_TEXT_FONT, headerFontSize, "")
             entry.name:SetText(info.name or "")
             entry.name:SetTextColor(1, 0.82, 0, 1)
 
@@ -506,37 +799,95 @@ function ns:UpdateCurrency()
             entry.tracked:Hide()
             entry.selBar:Hide()
             entry.stripe:Hide()
+            entry.bar:Hide()
         else
             visibleIdx = visibleIdx + 1
             entry.arrow:Hide()
+            local currFontSize = (ns.db and ns.db.global and ns.db.global.currencyFontSize) or 16
 
-            entry.icon:SetTexture(info.iconFileID)
-            entry.icon:SetPoint("LEFT", 4, 0)
-            entry.icon:Show()
+            -- Fetch detailed currency info for accurate weekly/season tracking
+            local link = C_CurrencyInfo.GetCurrencyListLink(i)
+            local currencyID = link and tonumber(link:match("currency:(%d+)"))
+            local detailed = currencyID and C_CurrencyInfo.GetCurrencyInfo(currencyID)
 
-            entry.name:ClearAllPoints()
-            entry.name:SetPoint("LEFT", entry.icon, "RIGHT", 6, 0)
-            entry.name:SetPoint("RIGHT", entry.qty, "LEFT", -8, 0)
-            entry.name:SetText(info.name or "")
-
-            if (info.quantity or 0) == 0 then
-                entry.name:SetTextColor(DISABLED_FONT_COLOR.r,
-                    DISABLED_FONT_COLOR.g, DISABLED_FONT_COLOR.b)
-                entry.qty:SetTextColor(DISABLED_FONT_COLOR.r,
-                    DISABLED_FONT_COLOR.g, DISABLED_FONT_COLOR.b)
-            else
-                entry.name:SetTextColor(HIGHLIGHT_FONT_COLOR.r,
-                    HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
-                entry.qty:SetTextColor(HIGHLIGHT_FONT_COLOR.r,
-                    HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
+            -- Determine if this currency has a cap
+            local capCurrent, capMax, capLabel = 0, 0, nil
+            if detailed and (detailed.maxWeeklyQuantity or 0) > 0 then
+                capCurrent = detailed.quantityEarnedThisWeek or 0
+                capMax = detailed.maxWeeklyQuantity
+                capLabel = "Weekly"
+            elseif detailed and detailed.useTotalEarnedForMaxQty and (detailed.maxQuantity or 0) > 0 then
+                capCurrent = detailed.totalEarned or 0
+                capMax = detailed.maxQuantity
+                capLabel = "Season"
+            elseif (info.maxQuantity or 0) > 0 then
+                capCurrent = info.quantity or 0
+                capMax = info.maxQuantity
+                capLabel = "Max"
             end
 
-            entry.qty:SetText(BreakUpLargeNumbers(info.quantity or 0))
+            if capMax > 0 then
+                -- Bar mode for capped currencies
+                entry.icon:Hide()
+                entry.name:Hide()
+                entry.qty:Hide()
+                entry.tracked:Hide()
 
-            entry.tracked:SetShown(info.isShowInBackpack)
+                entry.bar:Show()
+                entry.bar:SetMinMaxValues(0, capMax)
+                entry.bar:SetValue(capCurrent)
+                local pct = capCurrent / capMax
+                local color = GetCurrencyBarColor(pct)
+                entry.bar:SetStatusBarColor(color.r, color.g, color.b, 0.85)
 
-            entry.selBar:SetShown(selectedIndex == i)
-            entry.stripe:SetShown(visibleIdx % 2 == 0)
+                entry.barIcon:SetTexture(info.iconFileID)
+                entry.barName:SetFont(STANDARD_TEXT_FONT, currFontSize, "OUTLINE")
+                entry.barName:SetText(info.name or "")
+                entry.barName:SetTextColor(1, 1, 1, 1)
+                local barFontSize = max(8, currFontSize - 1)
+                entry.barProgress:SetFont(STANDARD_TEXT_FONT, barFontSize, "OUTLINE")
+                entry.barProgress:SetText(format("%s / %s", BreakUpLargeNumbers(capCurrent), BreakUpLargeNumbers(capMax)))
+                entry.barLabel:SetFont(STANDARD_TEXT_FONT, barFontSize, "OUTLINE")
+                entry.barLabel:SetText(capLabel)
+
+                entry.selBar:SetShown(selectedIndex == i)
+                entry.stripe:Hide()
+            else
+                -- Normal mode for uncapped currencies
+                entry.bar:Hide()
+
+                entry.name:Show()
+                entry.name:SetFont(STANDARD_TEXT_FONT, currFontSize, "")
+
+                entry.icon:SetTexture(info.iconFileID)
+                entry.icon:SetPoint("LEFT", 4, 0)
+                entry.icon:Show()
+
+                entry.name:ClearAllPoints()
+                entry.name:SetPoint("LEFT", entry.icon, "RIGHT", 6, 0)
+                entry.name:SetPoint("RIGHT", entry.qty, "LEFT", -8, 0)
+                entry.name:SetText(info.name or "")
+
+                if (info.quantity or 0) == 0 then
+                    entry.name:SetTextColor(DISABLED_FONT_COLOR.r,
+                        DISABLED_FONT_COLOR.g, DISABLED_FONT_COLOR.b)
+                    entry.qty:SetTextColor(DISABLED_FONT_COLOR.r,
+                        DISABLED_FONT_COLOR.g, DISABLED_FONT_COLOR.b)
+                else
+                    entry.name:SetTextColor(HIGHLIGHT_FONT_COLOR.r,
+                        HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
+                    entry.qty:SetTextColor(HIGHLIGHT_FONT_COLOR.r,
+                        HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
+                end
+
+                entry.qty:SetText(BreakUpLargeNumbers(info.quantity or 0))
+                entry.qty:Show()
+
+                entry.tracked:SetShown(info.isShowInBackpack)
+
+                entry.selBar:SetShown(selectedIndex == i)
+                entry.stripe:SetShown(visibleIdx % 2 == 0)
+            end
         end
 
         entry:Show()

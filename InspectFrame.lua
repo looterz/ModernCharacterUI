@@ -806,7 +806,7 @@ local function UpdateSlot(btn, unit)
     end
     if btn.overlays then
         local style = (ns.db and ns.db.global and ns.db.global.slotOverlayStyle) or "none"
-        if btn.overlays.gradTL then btn.overlays.gradTL:SetShown(style == "gradient" and isEnchanted) end
+        if btn.overlays.gradTL then btn.overlays.gradTL:Hide() end
         btn.overlays.cornerTL:SetShown(style == "corners" and isEnchanted)
     end
 
@@ -865,6 +865,29 @@ local function UpdateModel()
     model.zoomLevel = 0
     model:SetCamDistanceScale(1.15)
     model:SetFacing(0)
+
+    -- Dracthyr/Evoker: re-apply equipment via transmog info to show visage form gear
+    local _, classFile = UnitClass(unit)
+    if classFile == "EVOKER" and frame._cachedTransmogInfoList then
+        model:Undress()
+        C_Timer.After(0.1, function()
+            if not frame.unit then return end
+            for slotID, info in pairs(frame._cachedTransmogInfoList) do
+                if info.appearanceID and info.appearanceID > 0 then
+                    model:SetItemTransmogInfo(info, slotID)
+                end
+            end
+            -- Apply base items for slots without transmog
+            if frame._cachedItemLinks then
+                for slotID, link in pairs(frame._cachedItemLinks) do
+                    local tmogInfo = frame._cachedTransmogInfoList[slotID]
+                    if not tmogInfo or (tmogInfo.appearanceID and tmogInfo.appearanceID == 0) then
+                        model:TryOn(link)
+                    end
+                end
+            end
+        end)
+    end
 end
 
 local function UpdateCharacterInfo()

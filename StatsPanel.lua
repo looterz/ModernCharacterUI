@@ -25,13 +25,18 @@ local function NextY(height)
     return y
 end
 
+ns.statHeaderFontStrings = {}
+
 local function CreateSectionHeader(text)
     NextY(6)
+    local headerFontSize = (ns.db and ns.db.global and ns.db.global.statsHeaderFontSize) or 13
     local labelY = NextY(16)
-    local label = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local label = content:CreateFontString(nil, "OVERLAY")
+    label:SetFont(STANDARD_TEXT_FONT, headerFontSize, "")
     label:SetPoint("TOP", content, "TOP", 0, labelY)
     label:SetText(text)
     label:SetTextColor(1, 0.82, 0, 1)
+    table.insert(ns.statHeaderFontStrings, label)
 
     local lineY = NextY(8)
     local line = content:CreateTexture(nil, "ARTWORK")
@@ -46,23 +51,30 @@ end
 
 --- Create a stat row: left-aligned label, right-aligned value.
 --- Returns a table { label, value, frame } so the value can be updated.
+ns.statFontStrings = ns.statFontStrings or {}
+
 local function CreateStatLine(labelText, tooltipText)
     local ROW_HEIGHT = 20
     local y = NextY(ROW_HEIGHT)
+    local fontSize = (ns.db and ns.db.global and ns.db.global.statsFontSize) or 12
 
     local row = CreateFrame("Frame", nil, content)
     row:SetHeight(ROW_HEIGHT)
     row:SetPoint("TOPLEFT", content, "TOPLEFT", 4, y)
     row:SetPoint("TOPRIGHT", content, "TOPRIGHT", -4, y)
 
-    local label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local label = row:CreateFontString(nil, "OVERLAY")
+    label:SetFont(STANDARD_TEXT_FONT, fontSize, "")
     label:SetPoint("LEFT", 4, 0)
     label:SetText(labelText)
     label:SetTextColor(0.8, 0.8, 0.8, 1)
 
-    local value = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local value = row:CreateFontString(nil, "OVERLAY")
+    value:SetFont(STANDARD_TEXT_FONT, fontSize, "")
     value:SetPoint("RIGHT", -4, 0)
     value:SetTextColor(1, 1, 1, 1)
+
+    table.insert(ns.statFontStrings, { label = label, value = value })
 
     if tooltipText then
         row:EnableMouse(true)
