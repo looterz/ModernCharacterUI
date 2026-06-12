@@ -9,7 +9,7 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Equipment Manager tab to save, load, rename, and delete gear sets
 - PvP Item Levels show for items and your character while in PvP content
 - Reputation tab with search, filters, color-coded standing bars, and detail panel
-- Currency tab with search, filters, backpack tracking (Shift+click), and transfer log
+- Currency tab with search, filters, backpack tracking (Shift+click), quick access to Warband currency transfer, and transfer log
 - Movement Speed tracking based on stats and the current movement mode
 
 ![Character Panel](https://media.forgecdn.net/attachments/1603/225/wowscrnshot_032826_154237-jpg.jpg)
@@ -33,6 +33,7 @@ High-resolution UI for the character, dressing room, and inspect windows with Mi
 - Battle pet preview with 3D model browser, search, and paging across all pets
 - Housing furniture preview with 3D model browser, category filter, search, and paging
 - Ctrl+click any mount, pet, or furniture link to preview it instantly
+- Shift+click any transmog set to link it in chat
 
 ![Dressing Room](https://media.forgecdn.net/attachments/1603/222/wowscrnshot_032826_154335-jpg.jpg)
 

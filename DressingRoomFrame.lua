@@ -337,8 +337,21 @@ function MCUDR_FrameMixin:OnShow()
 		linkBtn:SetPoint("LEFT", undressBtn, "RIGHT", 8, 0);
 		linkBtn:SetText(LINK_BUTTON or "Link");
 		linkBtn:SetScript("OnClick", function()
-			local ns = MCUDressingRoomFrame._addonNS;
-			if ns and ns.drLastLink then ChatEdit_InsertLink(ns.drLastLink); end
+			local link;
+			local actor = preview.ModelScene and preview.ModelScene:GetPlayerActor();
+			local infoList = actor and actor.GetItemTransmogInfoList and actor:GetItemTransmogInfoList();
+			if infoList and C_TransmogCollection.GetCustomSetHyperlinkFromItemTransmogInfoList then
+				link = C_TransmogCollection.GetCustomSetHyperlinkFromItemTransmogInfoList(infoList);
+			end
+			if not link then
+				local addonNS = MCUDressingRoomFrame._addonNS;
+				link = addonNS and addonNS.drLastLink;
+			end
+			if link then
+				if not ChatFrameUtil.InsertLink(link) then
+					ChatFrameUtil.OpenChat(link);
+				end
+			end
 		end);
 
 		local closeBtn = CreateFrame("Button", nil, btnBar, "UIPanelButtonTemplate");

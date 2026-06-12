@@ -271,6 +271,7 @@ function MCU:HookCharacterPanel()
     -- we never call :Hide() on a secure frame, we simply prevent it
     -- from showing in the first place.
     local originalToggleCharacter = ToggleCharacter
+    ns.nativeToggleCharacter = originalToggleCharacter
     ToggleCharacter = function(tab, ...)
         if MCU.db.global.blockInCombat and InCombatLockdown() then
             MCU:Print("Character panel blocked while in combat.")

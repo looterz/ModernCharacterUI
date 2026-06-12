@@ -1384,6 +1384,19 @@ function MCUDR_SetModelMixin:OnMouseDown(button)
 	end
 
 	if button == "LeftButton" then
+		if IsModifiedClick("CHATLINK") then
+			local setID = self.elementData.set.setID;
+			local setInfo = C_TransmogSets.GetSetInfo(setID);
+			if setInfo and setInfo.name then
+				local linkDisplayText = ("[%s]"):format(setInfo.name);
+				local link = ("|cffff80ff%s|r"):format(LinkUtil.FormatLink(LinkTypes.TransmogSet, linkDisplayText, setID));
+				if not ChatFrameUtil.InsertLink(link) then
+					ChatFrameUtil.OpenChat(link);
+				end
+			end
+			return;
+		end
+
 		PlaySound(SOUNDKIT.UI_TRANSMOG_ITEM_CLICK);
 		C_TransmogOutfitInfo.SetOutfitToSet(self.elementData.set.setID);
 	end

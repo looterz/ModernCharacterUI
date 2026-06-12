@@ -233,21 +233,6 @@ local function RefreshTransferLog()
     logContent:SetHeight(max(y, 1))
 end
 
-currFilterOpts.addDivider()
-currFilterOpts.addAction(
-    CURRENCY_TRANSFER_LOG or "Currency Transfer Log",
-    function()
-        if transferLog:IsShown() then
-            transferLog:Hide()
-        else
-            if C_CurrencyInfo.RequestCurrencyDataForAccountCharacters then
-                C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
-            end
-            RefreshTransferLog()
-            transferLog:Show()
-        end
-    end)
-
 local function FuzzyMatch(subject, query)
     if query == "" then return true end
     local si = 1
@@ -341,6 +326,210 @@ unusedCheck:SetScript("OnClick", function(self)
               or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
     ns:UpdateCurrency()
 end)
+
+-- Blizzard's mixin drives the button's visibility and enabled state (it
+-- requests warband currency data and tracks transfer eligibility), but the
+-- click is ours: C_CurrencyInfo.RequestCurrencyFromAccountCharacter is
+-- protected, and the transfer menu's Confirm is blocked whenever any addon
+-- code populated the menu. The only working path is Blizzard's own token
+-- frame, so the button hands the player over to it.
+--
+-- To keep that hand-off short we collapse every currency category except the
+-- target's and force the transferable filter before opening the native frame
+-- (both are C-side state, so they carry no taint), then float a highlight
+-- over the target row once the secure event handler has rebuilt the list.
+local transferButton
+if CurrencyTransferToggleButtonMixin then
+    transferButton = CreateFrame("Button", nil, popup,
+                                 "CurrencyTransferToggleButtonTemplate")
+    transferButton:SetPoint("TOPLEFT", unusedCheck, "BOTTOMLEFT", 4, -10)
+
+    local savedCurrencyFilter
+    local savedHeaderState
+
+    local function FocusCurrencyInList(targetIndex)
+        local targetHeader
+        for i = targetIndex, 1, -1 do
+            local info = C_CurrencyInfo.GetCurrencyListInfo(i)
+            if info and info.isHeader and (info.currencyListDepth or 0) == 0 then
+                targetHeader = info.name
+                break
+            end
+        end
+
+        -- Merge into any pending snapshot so repeated transfers don't bake
+        -- the collapsed state in as the state to restore.
+        local state = savedHeaderState or {}
+        savedHeaderState = state
+
+        for i = C_CurrencyInfo.GetCurrencyListSize(), 1, -1 do
+            local info = C_CurrencyInfo.GetCurrencyListInfo(i)
+            if info and info.isHeader and (info.currencyListDepth or 0) == 0 then
+                if state[info.name] == nil then
+                    state[info.name] = info.isHeaderExpanded and true or false
+                end
+                if info.name == targetHeader then
+                    if not info.isHeaderExpanded then
+                        C_CurrencyInfo.ExpandCurrencyList(i, true)
+                    end
+                elseif info.isHeaderExpanded then
+                    C_CurrencyInfo.ExpandCurrencyList(i, false)
+                end
+            end
+        end
+
+        -- The character-only filter never triggers the secure event-driven
+        -- list rebuild, which transfers depend on; switch to the
+        -- transferable filter while the native frame is in use.
+        if C_CurrencyInfo.GetCurrencyFilter and Enum.CurrencyFilterType then
+            local transferable = Enum.CurrencyFilterType.DiscoveredAndAllAccountTransferable
+            local current = C_CurrencyInfo.GetCurrencyFilter()
+            if current ~= transferable then
+                savedCurrencyFilter = current
+                C_CurrencyInfo.SetCurrencyFilter(transferable)
+            end
+        end
+    end
+
+    local function RestoreCurrencyListState()
+        if savedCurrencyFilter then
+            C_CurrencyInfo.SetCurrencyFilter(savedCurrencyFilter)
+            savedCurrencyFilter = nil
+        end
+        if savedHeaderState then
+            local state = savedHeaderState
+            savedHeaderState = nil
+            for i = C_CurrencyInfo.GetCurrencyListSize(), 1, -1 do
+                local info = C_CurrencyInfo.GetCurrencyListInfo(i)
+                if info and info.isHeader and (info.currencyListDepth or 0) == 0 then
+                    local expanded = state[info.name]
+                    if expanded ~= nil and expanded ~= info.isHeaderExpanded then
+                        C_CurrencyInfo.ExpandCurrencyList(i, expanded)
+                    end
+                end
+            end
+        end
+        ns:UpdateCurrency()
+    end
+
+    if TokenFrame then
+        TokenFrame:HookScript("OnHide", RestoreCurrencyListState)
+    end
+
+    local transferHint
+
+    local function ShowTransferHint(row, currencyID)
+        if not transferHint then
+            transferHint = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+            transferHint:SetFrameStrata("DIALOG")
+            transferHint:SetBackdrop({
+                edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+                edgeSize = 12,
+            })
+            transferHint:SetBackdropBorderColor(1, 0.82, 0, 1)
+
+            local label = transferHint:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            label:SetPoint("LEFT", transferHint, "RIGHT", 8, 0)
+            label:SetText("Transfer this currency")
+
+            -- The native list recycles row frames on scroll, so drop the
+            -- highlight as soon as the anchored row shows something else.
+            transferHint:SetScript("OnUpdate", function(self, elapsed)
+                self.elapsed = (self.elapsed or 0) + elapsed
+                local rowValid = self.row and self.row:IsVisible()
+                    and self.row.elementData
+                    and self.row.elementData.currencyID == self.currencyID
+                if not rowValid or self.elapsed > 20
+                   or (TokenFramePopup and TokenFramePopup:IsShown()) then
+                    self:Hide()
+                end
+            end)
+            transferHint:SetScript("OnHide", function(self)
+                self.row = nil
+            end)
+        end
+
+        transferHint.row = row
+        transferHint.currencyID = currencyID
+        transferHint.elapsed = 0
+        transferHint:ClearAllPoints()
+        transferHint:SetPoint("TOPLEFT", row, "TOPLEFT", -2, 2)
+        transferHint:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 2, -2)
+        transferHint:Show()
+    end
+
+    local hintWatcher = CreateFrame("Frame")
+    hintWatcher:SetScript("OnEvent", function(self)
+        self:UnregisterEvent("ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED")
+        local currencyID = self.pendingCurrencyID
+        self.pendingCurrencyID = nil
+        if not currencyID then return end
+        -- Anchor only after the token frame's own secure handler has rebuilt
+        -- its list for this same event.
+        C_Timer.After(0, function()
+            if not (TokenFrame and TokenFrame:IsVisible() and TokenFrame.ScrollBox) then
+                return
+            end
+            local row = TokenFrame.ScrollBox:FindFrameByPredicate(function(button, elementData)
+                return not elementData.isHeader and elementData.currencyID == currencyID
+            end)
+            if row then
+                ShowTransferHint(row, currencyID)
+            end
+        end)
+    end)
+
+    transferButton:SetScript("OnClick", function(self)
+        if not self.currencyID then return end
+        if popup.currencyIndex then
+            FocusCurrencyInList(popup.currencyIndex)
+        end
+        ns.frame:Hide()
+        -- The native token list built during this (tainted) call is unusable
+        -- for transfers; requesting account data makes the secure
+        -- ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED handler rebuild it clean.
+        if C_CurrencyInfo.RequestCurrencyDataForAccountCharacters then
+            C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
+        end
+        hintWatcher.pendingCurrencyID = self.currencyID
+        hintWatcher:RegisterEvent("ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED")
+        if not (TokenFrame and TokenFrame:IsVisible()) then
+            local toggleCharacter = ns.nativeToggleCharacter or ToggleCharacter
+            toggleCharacter("TokenFrame")
+        end
+    end)
+
+    transferButton:HookScript("OnEnter", function(self)
+        if self:IsEnabled() then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip_AddNormalLine(GameTooltip,
+                "Blizzard restricts currency transfers to the default UI. This opens the Blizzard currency panel with this currency highlighted.",
+                true)
+            GameTooltip:Show()
+        end
+    end)
+    transferButton:HookScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+end
+
+currFilterOpts.addDivider()
+currFilterOpts.addAction(
+    CURRENCY_TRANSFER_LOG or "Currency Transfer Log",
+    function()
+        if transferLog:IsShown() then
+            transferLog:Hide()
+        else
+            selectedIndex = nil
+            popup:Hide()
+            if C_CurrencyInfo.RequestCurrencyDataForAccountCharacters then
+                C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
+            end
+            RefreshTransferLog()
+            transferLog:Show()
+            ns:UpdateCurrency()
+        end
+    end)
 
 local function CreateEntry()
     local entry = CreateFrame("Button", nil, content)
@@ -516,6 +705,10 @@ local function CreateEntry()
                 backpackCheck:SetChecked(info.isShowInBackpack)
                 unusedCheck:SetChecked(info.isTypeUnused)
                 popup.currencyIndex = self.currencyIndex
+                if transferButton then
+                    transferButton:Refresh(info)
+                end
+                transferLog:Hide()
                 popup:Show()
             end
         end
